@@ -55,7 +55,7 @@ export async function getAllProjects(): Promise<Project[]> {
     );
     
 
-    console.log({result});
+    // console.log({result});
     if (result && result.results) {
       return result.results.map((row: any) => ({
         ...row,
