@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
+    "deploy": "npm run build && npx wrangler pages deploy .next --project-name=dubai-filmmaker-cms",
+    "deploy:preview": "npm run build && npx wrangler pages deploy .next --project-name=dubai-filmmaker-cms --branch=preview",
     "db:setup": "node scripts/d1-setup.js",
     "db:migrate": "node scripts/d1-migrate.js",
     "db:migrate:local": "node scripts/d1-migrate.js --local",
