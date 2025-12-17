@@ -1,0 +1,74 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { queryD1 } from '@/lib/d1-client';
+
+export async function GET(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const result = await queryD1('SELECT * FROM header_config WHERE id = 1');
+    
+    if (!result || !result.results || result.results.length === 0) {
+      return NextResponse.json({ error: 'Header config not found' }, { status: 404 });
+    }
+
+    return NextResponse.json(result.results[0]);
+  } catch (error) {
+    console.error('Error fetching header config:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch header config' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    
+    // Only admins can update settings
+    if (!session?.user || session.user.role !== 'admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const { active_preset, config_json } = body;
+
+    // Validate JSON
+    try {
+      JSON.parse(config_json || '{}');
+    } catch (e) {
+      return NextResponse.json(
+        { error: 'Invalid JSON format in config_json' },
+        { status: 400 }
+      );
+    }
+
+    await queryD1(
+      `UPDATE header_config SET 
+        active_preset = ?,
+        config_json = ?
+      WHERE id = 1`,
+      [
+        active_preset || 'default',
+        config_json || '{}',
+      ]
+    );
+
+    // Fetch updated data
+    const result = await queryD1('SELECT * FROM header_config WHERE id = 1');
+    
+    return NextResponse.json(result.results[0]);
+  } catch (error) {
+    console.error('Error updating header config:', error);
+    return NextResponse.json(
+      { error: 'Failed to update header config' },
+      { status: 500 }
+    );
+  }
+}

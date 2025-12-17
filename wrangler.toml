@@ -1,0 +1,16 @@
+name = "dubai-filmmaker-cms"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "dubai-filmmaker-cms"
+database_id = "908f42f0-ad4d-4ce0-b3a2-9bb13cf54795"
+
+[[r2_buckets]]
+binding = "dubailfilmmaker"
+bucket_name = "dubailfilmmaker"
+
+[vars]
+ENVIRONMENT = "development"
+R2_PUBLIC_URL = "https://assets.dubaifilmmaker.ae"
