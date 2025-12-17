@@ -26,18 +26,18 @@ export default function SignInForm() {
         email,
         password,
         redirect: false,
+        callbackUrl: "/",
       });
 
       if (result?.error) {
         setError("Invalid email or password");
-      } else {
-        // Redirect to dashboard on successful login
-        router.push("/");
-        router.refresh();
+        setIsLoading(false);
+      } else if (result?.ok) {
+        // Use window.location for a full page reload to ensure session is established
+        window.location.href = "/";
       }
     } catch (error) {
       setError("An error occurred. Please try again.");
-    } finally {
       setIsLoading(false);
     }
   };
