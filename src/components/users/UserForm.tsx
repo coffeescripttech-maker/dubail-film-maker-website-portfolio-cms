@@ -224,7 +224,7 @@ export default function UserForm({ user, onSubmit, onCancel }: UserFormProps) {
           </label>
           <select
             value={formData.role}
-            onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+            onChange={(e) => setFormData({ ...formData, role: e.target.value as 'admin' | 'user' })}
             className="w-full px-4 py-3 text-sm border border-gray-300 rounded-lg dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="user">👤 User - Limited access</option>
