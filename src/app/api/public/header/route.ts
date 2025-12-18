@@ -1,11 +1,14 @@
 import { NextResponse } from 'next/server';
 import { queryD1 } from '@/lib/d1-client';
 
-// CORS headers for cross-origin requests
+// CORS headers for cross-origin requests with cache control
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Cache-Control': 'no-cache, no-store, must-revalidate',
+  'Pragma': 'no-cache',
+  'Expires': '0',
 };
 
 // Handle OPTIONS request for CORS preflight

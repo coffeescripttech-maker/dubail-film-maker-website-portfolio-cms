@@ -38,6 +38,8 @@ export async function PUT(request: NextRequest) {
 
     const body = await request.json();
     const { active_preset, config_json, logo_default, logo_reversed, logo_stacked } = body;
+    
+    console.log('📝 Updating header config with:', { active_preset, config_json, logo_default, logo_reversed, logo_stacked });
 
     // Validate JSON if provided
     if (config_json) {
@@ -77,14 +79,16 @@ export async function PUT(request: NextRequest) {
     }
 
     if (updates.length > 0) {
-      await queryD1(
-        `UPDATE header_config SET ${updates.join(', ')} WHERE id = 1`,
-        values
-      );
+      const query = `UPDATE header_config SET ${updates.join(', ')} WHERE id = 1`;
+      console.log('🔄 Executing query:', query, 'with values:', values);
+      
+      await queryD1(query, values);
+      console.log('✅ Database updated successfully');
     }
 
     // Fetch updated data
     const result = await queryD1('SELECT * FROM header_config WHERE id = 1');
+    console.log('📊 Updated header config:', result.results[0]);
     
     return NextResponse.json(result.results[0]);
   } catch (error) {
