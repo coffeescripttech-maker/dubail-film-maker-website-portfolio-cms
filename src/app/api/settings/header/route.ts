@@ -37,28 +37,51 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { active_preset, config_json } = body;
+    const { active_preset, config_json, logo_default, logo_reversed, logo_stacked } = body;
 
-    // Validate JSON
-    try {
-      JSON.parse(config_json || '{}');
-    } catch (e) {
-      return NextResponse.json(
-        { error: 'Invalid JSON format in config_json' },
-        { status: 400 }
-      );
+    // Validate JSON if provided
+    if (config_json) {
+      try {
+        JSON.parse(config_json);
+      } catch (e) {
+        return NextResponse.json(
+          { error: 'Invalid JSON format in config_json' },
+          { status: 400 }
+        );
+      }
     }
 
-    await queryD1(
-      `UPDATE header_config SET 
-        active_preset = ?,
-        config_json = ?
-      WHERE id = 1`,
-      [
-        active_preset || 'default',
-        config_json || '{}',
-      ]
-    );
+    // Build dynamic update query based on provided fields
+    const updates: string[] = [];
+    const values: any[] = [];
+
+    if (active_preset !== undefined) {
+      updates.push('active_preset = ?');
+      values.push(active_preset || 'default');
+    }
+    if (config_json !== undefined) {
+      updates.push('config_json = ?');
+      values.push(config_json || '{}');
+    }
+    if (logo_default !== undefined) {
+      updates.push('logo_default = ?');
+      values.push(logo_default);
+    }
+    if (logo_reversed !== undefined) {
+      updates.push('logo_reversed = ?');
+      values.push(logo_reversed);
+    }
+    if (logo_stacked !== undefined) {
+      updates.push('logo_stacked = ?');
+      values.push(logo_stacked);
+    }
+
+    if (updates.length > 0) {
+      await queryD1(
+        `UPDATE header_config SET ${updates.join(', ')} WHERE id = 1`,
+        values
+      );
+    }
 
     // Fetch updated data
     const result = await queryD1('SELECT * FROM header_config WHERE id = 1');

@@ -20,7 +20,24 @@ export default function ProjectTable({
   selectedProjects = [], 
   onSelectionChange 
 }: ProjectTableProps) {
-  
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      onSelectionChange?.(projects.map(p => p.id));
+    } else {
+      onSelectionChange?.([]);
+    }
+  };
+
+  const handleSelectOne = (projectId: string, checked: boolean) => {
+    if (checked) {
+      onSelectionChange?.([...selectedProjects, projectId]);
+    } else {
+      onSelectionChange?.(selectedProjects.filter(id => id !== projectId));
+    }
+  };
+
+  const isAllSelected = projects.length > 0 && selectedProjects.length === projects.length;
+  const isSomeSelected = selectedProjects.length > 0 && selectedProjects.length < projects.length;
 
   if (loading) {
     return (
@@ -46,6 +63,21 @@ export default function ProjectTable({
       <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
         <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
           <tr>
+            {onSelectionChange && (
+              <th scope="col" className="px-4 py-3 w-12">
+                <input
+                  type="checkbox"
+                  checked={isAllSelected}
+                  ref={(input) => {
+                    if (input) {
+                      input.indeterminate = isSomeSelected;
+                    }
+                  }}
+                  onChange={(e) => handleSelectAll(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                />
+              </th>
+            )}
             <th scope="col" className="px-6 py-3">Project</th>
             <th scope="col" className="px-6 py-3">Client</th>
             <th scope="col" className="px-6 py-3">Category</th>
@@ -56,9 +88,21 @@ export default function ProjectTable({
           </tr>
         </thead>
         <tbody>
-          {projects.map((project) => (
-            <tr key={project.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
-              <td className="px-6 py-4">
+          {projects.map((project) => {
+            const isSelected = selectedProjects.includes(project.id);
+            return (
+              <tr key={project.id} className={`border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 ${isSelected ? 'bg-blue-50 dark:bg-blue-900/20' : 'bg-white dark:bg-gray-800'}`}>
+                {onSelectionChange && (
+                  <td className="px-4 py-4">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={(e) => handleSelectOne(project.id, e.target.checked)}
+                      className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                    />
+                  </td>
+                )}
+                <td className="px-6 py-4">
                 <div className="flex items-center space-x-3">
                   {project.poster_image && (
                     <img
@@ -158,7 +202,8 @@ export default function ProjectTable({
                 </div>
               </td>
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>

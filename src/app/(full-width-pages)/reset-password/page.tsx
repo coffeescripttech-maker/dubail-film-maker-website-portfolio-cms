@@ -14,12 +14,26 @@ export default function ResetPasswordPage() {
     setIsLoading(true);
     setError("");
 
-    // Simulate password reset request
-    // In a real app, this would send an email with reset link
-    setTimeout(() => {
-      setIsSubmitted(true);
+    try {
+      const response = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setIsSubmitted(true);
+      } else {
+        setError(data.error || 'Failed to send reset email');
+      }
+    } catch (error) {
+      console.error('Reset password error:', error);
+      setError('An error occurred. Please try again.');
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   return (
@@ -132,12 +146,11 @@ export default function ResetPasswordPage() {
           </p>
         </div>
 
-        <div className="mt-6 rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-900/20">
+        {/* <div className="mt-6 rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-900/20">
           <p className="text-xs text-blue-600 dark:text-blue-400">
-            <strong>Note:</strong> This is a demo CMS. Password reset functionality is not fully implemented. Please
-            contact your administrator to reset your password.
+            <strong>Note:</strong> Password reset emails are sent via Resend. Make sure your email service is configured in environment variables.
           </p>
-        </div>
+        </div> */}
       </div>
     </div>
   );

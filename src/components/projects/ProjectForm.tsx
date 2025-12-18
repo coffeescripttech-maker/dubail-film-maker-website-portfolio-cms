@@ -258,11 +258,7 @@ export default function ProjectForm({ project, onSubmit, onCancel, existingProje
       }
     });
 
-    // Validate credits - at least one complete credit
-    const validCredits = credits.filter(c => c.role.trim() && c.name.trim());
-    if (validCredits.length === 0) {
-      newErrors.credits = 'At least one credit entry is required';
-    }
+    // Credits are optional - no validation needed
 
     setErrors(newErrors);
 
@@ -779,10 +775,10 @@ export default function ProjectForm({ project, onSubmit, onCancel, existingProje
       </div>
 
       {/* Credits Section */}
-      <div className={`${errors.credits ? 'ring-1 ring-red-500 rounded-lg p-4' : ''}`}>
+      <div>
         <div className="flex items-center justify-between mb-4">
           <Label>
-            Credits <span className="text-red-500">*</span>
+            Credits <span className="text-gray-400 text-xs">(Optional)</span>
           </Label>
           <button
             type="button"
@@ -808,7 +804,6 @@ export default function ProjectForm({ project, onSubmit, onCancel, existingProje
                     value={credit.role}
                     onChange={(e) => {
                       handleCreditChange(index, 'role', e.target.value);
-                      if (errors.credits) setErrors(prev => ({ ...prev, credits: '' }));
                     }}
                     placeholder="Role (e.g., Director, Producer)"
                     className={`h-11 w-full rounded-lg border px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 focus:outline-hidden focus:ring-3 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 ${
@@ -824,7 +819,6 @@ export default function ProjectForm({ project, onSubmit, onCancel, existingProje
                     value={credit.name}
                     onChange={(e) => {
                       handleCreditChange(index, 'name', e.target.value);
-                      if (errors.credits) setErrors(prev => ({ ...prev, credits: '' }));
                     }}
                     placeholder="Name"
                     className={`h-11 w-full rounded-lg border px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 focus:outline-hidden focus:ring-3 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 ${
@@ -853,20 +847,14 @@ export default function ProjectForm({ project, onSubmit, onCancel, existingProje
           })}
         </div>
         
-        {errors.credits && (
-          <p className="mt-3 text-xs text-red-600 dark:text-red-400">
-            ❌ {errors.credits}
-          </p>
-        )}
-        
-        {!errors.credits && credits.some(c => c.role.trim() && c.name.trim()) && (
+        {credits.some(c => c.role.trim() && c.name.trim()) && (
           <p className="mt-3 text-xs text-green-600 dark:text-green-400">
             ✓ {credits.filter(c => c.role.trim() && c.name.trim()).length} credit(s) added
           </p>
         )}
         
         <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-          Add team members who worked on this project. At least one complete entry is required.
+          Add team members who worked on this project (optional).
         </p>
       </div>
 

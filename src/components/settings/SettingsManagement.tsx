@@ -3,8 +3,9 @@ import React, { useState } from "react";
 import AboutSettings from "./AboutSettings";
 import ContactSettings from "./ContactSettings";
 import HeaderSettings from "./HeaderSettings";
+import LogoSettings from "./LogoSettings";
 
-type TabType = 'about' | 'contact' | 'header';
+type TabType = 'about' | 'contact' | 'header' | 'logo';
 
 export default function SettingsManagement() {
   const [activeTab, setActiveTab] = useState<TabType>('about');
@@ -12,6 +13,7 @@ export default function SettingsManagement() {
   const tabs = [
     { id: 'about' as TabType, name: 'About Content', icon: '📝' },
     { id: 'contact' as TabType, name: 'Contact Info', icon: '📞' },
+    { id: 'logo' as TabType, name: 'Logo Settings', icon: '🎨' },
     { id: 'header' as TabType, name: 'Header Config', icon: '⚙️' },
   ];
 
@@ -44,6 +46,7 @@ export default function SettingsManagement() {
       <div className="py-4">
         {activeTab === 'about' && <AboutSettings />}
         {activeTab === 'contact' && <ContactSettings />}
+        {activeTab === 'logo' && <LogoSettings />}
         {activeTab === 'header' && <HeaderSettings />}
       </div>
     </div>

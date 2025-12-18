@@ -38,6 +38,10 @@ export default function FileUpload({
   showPreview = true
 }: FileUploadProps) {
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadedBytes, setUploadedBytes] = useState(0);
+  const [totalBytes, setTotalBytes] = useState(0);
+  const [processing, setProcessing] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -59,16 +63,14 @@ export default function FileUpload({
       return;
     }
 
-    toast.loading('Uploading...', {
-      description: `Uploading ${file.name}`,
-      id: 'file-upload'
-    });
-
     uploadFile(file);
   };
 
   const uploadFile = async (file: File) => {
     setUploading(true);
+    setUploadProgress(0);
+    setUploadedBytes(0);
+    setTotalBytes(file.size); // Set total size immediately
     
     try {
       const formData = new FormData();
@@ -76,17 +78,61 @@ export default function FileUpload({
       formData.append('type', type);
       if (folder) formData.append('folder', folder);
 
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
+      // Create XMLHttpRequest to track upload progress
+      const xhr = new XMLHttpRequest();
+
+      // Track upload progress
+      xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable) {
+          const percentComplete = Math.round((e.loaded / e.total) * 100);
+          setUploadProgress(percentComplete);
+          setUploadedBytes(e.loaded);
+          setTotalBytes(e.total);
+          
+          // When upload reaches 100%, show processing state
+          if (percentComplete === 100) {
+            setProcessing(true);
+          }
+        }
       });
 
-      const result = await response.json();
+      // Handle completion
+      const uploadPromise = new Promise<any>((resolve, reject) => {
+        xhr.addEventListener('load', () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              const result = JSON.parse(xhr.responseText);
+              resolve(result);
+            } catch (e) {
+              reject(new Error('Invalid response format'));
+            }
+          } else {
+            reject(new Error(`Upload failed with status ${xhr.status}`));
+          }
+        });
+
+        xhr.addEventListener('error', () => {
+          reject(new Error('Network error during upload'));
+        });
+
+        xhr.addEventListener('abort', () => {
+          reject(new Error('Upload cancelled'));
+        });
+      });
+
+      // Start upload
+      xhr.open('POST', '/api/upload');
+      xhr.send(formData);
+
+      const result = await uploadPromise;
 
       if (result.success) {
+        // Processing is already shown when progress hit 100%
+        // Now complete the upload
+        setProcessing(false);
         onUploadComplete(result.file);
         toast.success('Upload Complete!', {
-          description: `${file.name} has been uploaded successfully.`
+          description: `${file.name} uploaded successfully`
         });
       } else {
         const errorMsg = result.error || 'Upload failed';
@@ -97,16 +143,29 @@ export default function FileUpload({
       }
     } catch (error) {
       console.error('Upload error:', error);
-      const errorMsg = 'Upload failed';
+      const errorMsg = error instanceof Error ? error.message : 'Upload failed';
       onUploadError?.(errorMsg);
       toast.error('Upload Error', {
-        description: errorMsg,
-        id: 'file-upload'
+        description: errorMsg
       });
     } finally {
       setUploading(false);
-      toast.dismiss('file-upload');
+      setProcessing(false);
+      setTimeout(() => {
+        setUploadProgress(0);
+        setUploadedBytes(0);
+        setTotalBytes(0);
+      }, 1000); // Reset progress after 1 second
     }
+  };
+
+  // Helper function to format bytes
+  const formatBytes = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -225,10 +284,47 @@ export default function FileUpload({
         />
 
         <div className="text-center">
-          {uploading ? (
-            <div className="space-y-2">
-              <div className="w-8 h-8 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin mx-auto dark:border-gray-700"></div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Uploading...</p>
+          {uploading || processing ? (
+            <div className="space-y-3">
+              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mx-auto dark:bg-blue-900/30">
+                {processing ? (
+                  <div className="w-6 h-6 border-3 border-blue-200 border-t-blue-600 rounded-full animate-spin dark:border-blue-800 dark:border-t-blue-400"></div>
+                ) : (
+                  <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                )}
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                    {processing ? 'Processing...' : 'Uploading...'}
+                  </p>
+                  <p className="text-sm font-bold text-blue-600 dark:text-blue-400">
+                    {uploadProgress}%
+                  </p>
+                </div>
+                {/* Progress Bar */}
+                <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 overflow-hidden">
+                  <div 
+                    className="bg-gradient-to-r from-blue-500 to-blue-600 h-2.5 rounded-full transition-all duration-300 ease-out relative overflow-hidden"
+                    style={{ width: `${uploadProgress}%` }}
+                  >
+                    {/* Animated shimmer effect */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer"></div>
+                  </div>
+                </div>
+                {totalBytes > 0 && !processing && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {formatBytes(uploadedBytes)} / {formatBytes(totalBytes)}
+                  </p>
+                )}
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {processing 
+                    ? 'Saving to storage...' 
+                    : 'Please wait while your file is being uploaded'}
+                </p>
+              </div>
             </div>
           ) : (
             <div className="space-y-2">

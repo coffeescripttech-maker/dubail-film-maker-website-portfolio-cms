@@ -5,7 +5,6 @@ import { ChevronLeftIcon, EyeCloseIcon, EyeIcon } from "@/icons";
 import Link from "next/link";
 import React, { useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
 
 export default function SignInForm() {
   const [showPassword, setShowPassword] = useState(false);
@@ -14,7 +13,6 @@ export default function SignInForm() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,6 +20,8 @@ export default function SignInForm() {
     setError("");
 
     try {
+      console.log("🔐 Starting sign in process...");
+      
       const result = await signIn("credentials", {
         email,
         password,
@@ -29,14 +29,28 @@ export default function SignInForm() {
         callbackUrl: "/",
       });
 
+      console.log("🔐 Sign in result:", {
+        ok: result?.ok,
+        error: result?.error,
+        status: result?.status,
+        url: result?.url,
+      });
+
       if (result?.error) {
+        console.error("❌ Sign in error:", result.error);
         setError("Invalid email or password");
         setIsLoading(false);
       } else if (result?.ok) {
+        console.log("✅ Sign in successful, redirecting to dashboard...");
         // Use window.location for a full page reload to ensure session is established
         window.location.href = "/";
+      } else {
+        console.warn("⚠️ Unexpected sign in result:", result);
+        setError("Authentication failed. Please try again.");
+        setIsLoading(false);
       }
     } catch (error) {
+      console.error("❌ Sign in exception:", error);
       setError("An error occurred. Please try again.");
       setIsLoading(false);
     }

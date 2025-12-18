@@ -6,8 +6,9 @@ import PageBreadCrumb from "@/components/common/PageBreadCrumb";
 import ProjectTable from "@/components/projects/ProjectTable";
 import ProjectForm from "@/components/projects/ProjectForm";
 import ProjectFilters from "@/components/projects/ProjectFilters";
+import BulkImport from "@/components/projects/BulkImport";
 import { Project } from "@/lib/db";
-import { PlusIcon } from "@/icons";
+import { PlusIcon, ArrowUpIcon, TrashBinIcon } from "@/icons";
 import { toast } from "sonner";
 
 export default function ProjectManagement() {
@@ -15,7 +16,9 @@ export default function ProjectManagement() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [showBulkImport, setShowBulkImport] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
   const [filters, setFilters] = useState({
     category: '',
     featured: '',
@@ -140,11 +143,76 @@ export default function ProjectManagement() {
     setEditingProject(null);
   };
 
+  const handleBulkImport = () => {
+    setShowBulkImport(true);
+    setShowForm(false);
+  };
+
+  const handleBulkImportComplete = async () => {
+    setShowBulkImport(false);
+    await fetchProjects();
+  };
+
+  const handleBulkImportCancel = () => {
+    setShowBulkImport(false);
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedProjects.length === 0) {
+      toast.error('No Projects Selected', {
+        description: 'Please select projects to delete'
+      });
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to delete ${selectedProjects.length} project(s)?`)) {
+      return;
+    }
+
+    const loadingToast = toast.loading('Deleting Projects', {
+      description: `Deleting ${selectedProjects.length} project(s)...`
+    });
+
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const projectId of selectedProjects) {
+      try {
+        const response = await fetch(`/api/projects/${projectId}`, {
+          method: 'DELETE',
+        });
+
+        if (response.ok) {
+          successCount++;
+        } else {
+          errorCount++;
+        }
+      } catch (error) {
+        console.error('Error deleting project:', error);
+        errorCount++;
+      }
+    }
+
+    if (successCount > 0) {
+      toast.success('Projects Deleted!', {
+        description: `Successfully deleted ${successCount} project(s)${errorCount > 0 ? `, ${errorCount} failed` : ''}`,
+        id: loadingToast
+      });
+      setSelectedProjects([]);
+      await fetchProjects();
+    } else {
+      toast.error('Delete Failed', {
+        description: 'Failed to delete projects',
+        id: loadingToast
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
       <PageBreadCrumb pageTitle="Project Management" />
 
-      {!showForm ? (
+      {!showForm && !showBulkImport ? (
         <>
           {/* Header with Create Button */}
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -156,13 +224,22 @@ export default function ProjectManagement() {
                 Manage your film projects and portfolio content
               </p>
             </div>
-            <button
-              onClick={handleCreateProject}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-            >
-              <PlusIcon className="w-4 h-4" />
-              Create Project
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={handleBulkImport}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700"
+              >
+                <ArrowUpIcon className="w-4 h-4" />
+                Bulk Import
+              </button>
+              <button
+                onClick={handleCreateProject}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              >
+                <PlusIcon className="w-4 h-4" />
+                Create Project
+              </button>
+            </div>
           </div>
 
           {/* Filters */}
@@ -173,6 +250,32 @@ export default function ProjectManagement() {
             />
           </ComponentCard>
 
+          {/* Bulk Actions Bar */}
+          {selectedProjects.length > 0 && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center justify-between dark:bg-blue-900/20 dark:border-blue-800">
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium text-blue-900 dark:text-blue-300">
+                  {selectedProjects.length} project(s) selected
+                </span>
+                <button
+                  onClick={() => setSelectedProjects([])}
+                  className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                >
+                  Clear selection
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleBulkDelete}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                >
+                  <TrashBinIcon className="w-4 h-4" />
+                  Delete Selected
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Projects Table */}
           <ComponentCard title={`Projects (${projects.length})`}>
             <ProjectTable
@@ -180,9 +283,20 @@ export default function ProjectManagement() {
               loading={loading}
               onEdit={handleEditProject}
               onDelete={handleDeleteProject}
+              selectedProjects={selectedProjects}
+              onSelectionChange={setSelectedProjects}
             />
           </ComponentCard>
         </>
+      ) : showBulkImport ? (
+        /* Bulk Import */
+        <ComponentCard title="Bulk Import Projects">
+          <BulkImport
+            onImportComplete={handleBulkImportComplete}
+            onCancel={handleBulkImportCancel}
+            existingProjects={projects.length}
+          />
+        </ComponentCard>
       ) : (
         /* Project Form */
         <ComponentCard title={editingProject ? "Edit Project" : "Create Project"}>
