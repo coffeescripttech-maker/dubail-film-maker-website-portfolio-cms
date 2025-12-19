@@ -70,15 +70,27 @@ export default function FileUpload({
     setUploading(true);
     setUploadProgress(0);
     setUploadedBytes(0);
-    setTotalBytes(file.size); // Set total size immediately
+    setTotalBytes(file.size);
     
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('type', type);
-      if (folder) formData.append('folder', folder);
+      // Step 1: Get presigned URL from our API
+      const presignedResponse = await fetch('/api/upload/presigned-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fileName: file.name,
+          fileType: file.type,
+          folder: folder
+        })
+      });
 
-      // Create XMLHttpRequest to track upload progress
+      if (!presignedResponse.ok) {
+        throw new Error('Failed to get upload URL');
+      }
+
+      const { presignedUrl, key, publicUrl } = await presignedResponse.json();
+
+      // Step 2: Upload directly to R2 using presigned URL
       const xhr = new XMLHttpRequest();
 
       // Track upload progress
@@ -89,7 +101,6 @@ export default function FileUpload({
           setUploadedBytes(e.loaded);
           setTotalBytes(e.total);
           
-          // When upload reaches 100%, show processing state
           if (percentComplete === 100) {
             setProcessing(true);
           }
@@ -97,15 +108,10 @@ export default function FileUpload({
       });
 
       // Handle completion
-      const uploadPromise = new Promise<any>((resolve, reject) => {
+      const uploadPromise = new Promise<void>((resolve, reject) => {
         xhr.addEventListener('load', () => {
           if (xhr.status >= 200 && xhr.status < 300) {
-            try {
-              const result = JSON.parse(xhr.responseText);
-              resolve(result);
-            } catch (e) {
-              reject(new Error('Invalid response format'));
-            }
+            resolve();
           } else {
             reject(new Error(`Upload failed with status ${xhr.status}`));
           }
@@ -120,27 +126,30 @@ export default function FileUpload({
         });
       });
 
-      // Start upload
-      xhr.open('POST', '/api/upload');
-      xhr.send(formData);
+      // Upload directly to R2
+      xhr.open('PUT', presignedUrl);
+      xhr.setRequestHeader('Content-Type', file.type);
+      xhr.send(file);
 
-      const result = await uploadPromise;
+      await uploadPromise;
 
-      if (result.success) {
-        // Processing is already shown when progress hit 100%
-        // Now complete the upload
-        setProcessing(false);
-        onUploadComplete(result.file);
-        toast.success('Upload Complete!', {
-          description: `${file.name} uploaded successfully`
-        });
-      } else {
-        const errorMsg = result.error || 'Upload failed';
-        onUploadError?.(errorMsg);
-        toast.error('Upload Failed', {
-          description: errorMsg
-        });
-      }
+      // Upload successful
+      setProcessing(false);
+      
+      const result: UploadResult = {
+        key,
+        url: publicUrl,
+        publicUrl,
+        size: file.size,
+        contentType: file.type,
+        originalName: file.name
+      };
+
+      onUploadComplete(result);
+      toast.success('Upload Complete!', {
+        description: `${file.name} uploaded successfully`
+      });
+
     } catch (error) {
       console.error('Upload error:', error);
       const errorMsg = error instanceof Error ? error.message : 'Upload failed';
@@ -155,7 +164,7 @@ export default function FileUpload({
         setUploadProgress(0);
         setUploadedBytes(0);
         setTotalBytes(0);
-      }, 1000); // Reset progress after 1 second
+      }, 1000);
     }
   };
 

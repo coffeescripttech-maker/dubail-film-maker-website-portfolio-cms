@@ -224,7 +224,7 @@ function transformCloudflareData(overallData: any, countryData: any, days: numbe
   const change = firstHalf > 0 ? ((secondHalf - firstHalf) / firstHalf) * 100 : 0;
   
   // Process country data if available
-  let countries = [];
+  let countries: Array<{ country: string; visitors: number }> = [];
   if (countryData) {
     const countryGroups = countryData?.viewer?.accounts?.[0]?.rumPageloadEventsAdaptiveGroups || [];
     const countryMap = new Map<string, number>();

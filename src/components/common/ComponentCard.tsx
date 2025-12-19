@@ -5,6 +5,7 @@ interface ComponentCardProps {
   children: React.ReactNode;
   className?: string; // Additional custom classes for styling
   desc?: string; // Description text
+  onBack?: () => void; // Optional back button handler
 }
 
 const ComponentCard: React.FC<ComponentCardProps> = ({
@@ -12,6 +13,7 @@ const ComponentCard: React.FC<ComponentCardProps> = ({
   children,
   className = "",
   desc = "",
+  onBack,
 }) => {
   return (
     <div
@@ -19,14 +21,41 @@ const ComponentCard: React.FC<ComponentCardProps> = ({
     >
       {/* Card Header */}
       <div className="px-6 py-5">
-        <h3 className="text-base font-medium text-gray-800 dark:text-white/90">
-          {title}
-        </h3>
-        {desc && (
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            {desc}
-          </p>
-        )}
+        <div className="flex items-center gap-3">
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="flex items-center justify-center w-8 h-8 text-gray-600 transition-colors rounded-lg hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+              aria-label="Go back"
+            >
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 20 20"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M12.5 15L7.5 10L12.5 5"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+          )}
+          <div className="flex-1">
+            <h3 className="text-base font-medium text-gray-800 dark:text-white/90">
+              {title}
+            </h3>
+            {desc && (
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                {desc}
+              </p>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Card Body */}

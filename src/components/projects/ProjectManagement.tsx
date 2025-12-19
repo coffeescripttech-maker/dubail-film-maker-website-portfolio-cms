@@ -299,7 +299,10 @@ export default function ProjectManagement() {
         </ComponentCard>
       ) : (
         /* Project Form */
-        <ComponentCard title={editingProject ? "Edit Project" : "Create Project"}>
+        <ComponentCard 
+          title={editingProject ? "Edit Project" : "Create Project"}
+          onBack={handleFormCancel}
+        >
           <ProjectForm
             project={editingProject}
             onSubmit={handleFormSubmit}
