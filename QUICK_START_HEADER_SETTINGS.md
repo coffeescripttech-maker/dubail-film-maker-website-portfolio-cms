@@ -35,7 +35,7 @@ Your portfolio website is already configured to fetch from the CMS!
 ```javascript
 const API_CONFIG = {
   USE_CMS_API: true,
-  CMS_BASE_URL: 'http://localhost:3000/api/public'
+  CMS_BASE_URL: 'https://dubail-film-maker-website-portfolio.vercel.app/api/public'
 };
 ```
 
@@ -67,7 +67,7 @@ CMS Database → Public API → Portfolio Website
 ### 1. Test CMS API
 Open in browser:
 ```
-http://localhost:3000/api/public/header
+https://dubail-film-maker-website-portfolio.vercel.app/api/public/header
 ```
 
 Should return:
@@ -150,7 +150,7 @@ Should return:
 ### Logo not showing?
 ```bash
 # Check if API returns logo URL
-curl http://localhost:3000/api/public/header
+curl https://dubail-film-maker-website-portfolio.vercel.app/api/public/header
 
 # Check browser console for errors
 # Open DevTools → Console tab

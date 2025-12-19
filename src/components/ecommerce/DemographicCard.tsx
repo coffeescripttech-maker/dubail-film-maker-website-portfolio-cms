@@ -1,13 +1,69 @@
 "use client";
-import Image from "next/image";
-
 import CountryMap from "./CountryMap";
 import { useState } from "react";
 import { MoreDotIcon } from "@/icons";
 import { Dropdown } from "../ui/dropdown/Dropdown";
 import { DropdownItem } from "../ui/dropdown/DropdownItem";
+import Flag from "react-world-flags";
 
-export default function DemographicCard() {
+interface AnalyticsData {
+  countries: Array<{ country: string; visitors: number }>;
+  uniqueVisitors: {
+    total: number;
+  };
+}
+
+interface DemographicCardProps {
+  analytics: AnalyticsData | null;
+}
+
+// Country name to ISO 3166-1 alpha-2 code mapping
+const countryToCode: Record<string, string> = {
+  'PH': 'PH',
+  'Philippines': 'PH',
+  'US': 'US',
+  'USA': 'US',
+  'United States': 'US',
+  'AE': 'AE',
+  'UAE': 'AE',
+  'United Arab Emirates': 'AE',
+  'GB': 'GB',
+  'UK': 'GB',
+  'United Kingdom': 'GB',
+  'FR': 'FR',
+  'France': 'FR',
+  'SA': 'SA',
+  'Saudi Arabia': 'SA',
+  'DE': 'DE',
+  'Germany': 'DE',
+  'IN': 'IN',
+  'India': 'IN',
+  'CA': 'CA',
+  'Canada': 'CA',
+  'AU': 'AU',
+  'Australia': 'AU',
+  'JP': 'JP',
+  'Japan': 'JP',
+  'CN': 'CN',
+  'China': 'CN',
+  'BR': 'BR',
+  'Brazil': 'BR',
+  'MX': 'MX',
+  'Mexico': 'MX',
+  'ES': 'ES',
+  'Spain': 'ES',
+  'IT': 'IT',
+  'Italy': 'IT',
+  'NL': 'NL',
+  'Netherlands': 'NL',
+};
+
+// Get country code from country name
+function getCountryCode(countryName: string): string {
+  return countryToCode[countryName] || countryName.substring(0, 2).toUpperCase();
+}
+
+export default function DemographicCard({ analytics }: DemographicCardProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   function toggleDropdown() {
@@ -59,72 +115,61 @@ export default function DemographicCard() {
           id="mapOne"
           className="mapOne map-btn -mx-4 -my-6 h-[212px] w-[252px] 2xsm:w-[307px] xsm:w-[358px] sm:-mx-6 md:w-[668px] lg:w-[634px] xl:w-[393px] 2xl:w-[554px]"
         >
-          <CountryMap />
+          <CountryMap countries={analytics?.countries} />
         </div>
       </div>
 
       <div className="space-y-5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="items-center w-full rounded-full max-w-8">
-              <Image
-                width={48}
-                height={48}
-                src="/images/country/country-01.svg"
-                alt="usa"
-                className="w-full"
-              />
-            </div>
-            <div>
-              <p className="font-semibold text-gray-800 text-theme-sm dark:text-white/90">
-                USA
-              </p>
-              <span className="block text-gray-500 text-theme-xs dark:text-gray-400">
-                2,379 Customers
-              </span>
-            </div>
-          </div>
+        {analytics?.countries && analytics.countries.length > 0 ? (
+          analytics.countries.slice(0, 5).map((country, index) => {
+            const totalVisitors = analytics.uniqueVisitors.total;
+            const percentage = totalVisitors > 0 ? (country.visitors / totalVisitors) * 100 : 0;
+            const countryCode = getCountryCode(country.country);
+            
+            return (
+              <div key={index} className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-center w-12 h-12 rounded-full overflow-hidden border border-gray-200 dark:border-gray-700">
+                    <Flag 
+                      code={countryCode} 
+                      style={{ width: '48px', height: '48px', objectFit: 'cover' }}
+                      fallback={
+                        <div className="flex items-center justify-center w-12 h-12 bg-gray-100 dark:bg-gray-800 text-gray-400">
+                          {countryCode}
+                        </div>
+                      }
+                    />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-800 text-theme-sm dark:text-white/90">
+                      {country.country}
+                    </p>
+                    <span className="block text-gray-500 text-theme-xs dark:text-gray-400">
+                      {country.visitors.toLocaleString()} Visitors
+                    </span>
+                  </div>
+                </div>
 
-          <div className="flex w-full max-w-[140px] items-center gap-3">
-            <div className="relative block h-2 w-full max-w-[100px] rounded-sm bg-gray-200 dark:bg-gray-800">
-              <div className="absolute left-0 top-0 flex h-full w-[79%] items-center justify-center rounded-sm bg-brand-500 text-xs font-medium text-white"></div>
-            </div>
-            <p className="font-medium text-gray-800 text-theme-sm dark:text-white/90">
-              79%
-            </p>
+                <div className="flex w-full max-w-[140px] items-center gap-3">
+                  <div className="relative block h-2 w-full max-w-[100px] rounded-sm bg-gray-200 dark:bg-gray-800">
+                    <div 
+                      className="absolute left-0 top-0 flex h-full items-center justify-center rounded-sm bg-brand-500 text-xs font-medium text-white"
+                      style={{ width: `${Math.round(percentage)}%` }}
+                    ></div>
+                  </div>
+                  <p className="font-medium text-gray-800 text-theme-sm dark:text-white/90">
+                    {Math.round(percentage)}%
+                  </p>
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+            <p>No visitor data available yet</p>
+            <p className="text-sm mt-2">Data will appear once your site receives traffic</p>
           </div>
-        </div>
-
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="items-center w-full rounded-full max-w-8">
-              <Image
-                width={48}
-                height={48}
-                className="w-full"
-                src="/images/country/country-02.svg"
-                alt="france"
-              />
-            </div>
-            <div>
-              <p className="font-semibold text-gray-800 text-theme-sm dark:text-white/90">
-                France
-              </p>
-              <span className="block text-gray-500 text-theme-xs dark:text-gray-400">
-                589 Customers
-              </span>
-            </div>
-          </div>
-
-          <div className="flex w-full max-w-[140px] items-center gap-3">
-            <div className="relative block h-2 w-full max-w-[100px] rounded-sm bg-gray-200 dark:bg-gray-800">
-              <div className="absolute left-0 top-0 flex h-full w-[23%] items-center justify-center rounded-sm bg-brand-500 text-xs font-medium text-white"></div>
-            </div>
-            <p className="font-medium text-gray-800 text-theme-sm dark:text-white/90">
-              23%
-            </p>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

@@ -468,6 +468,6 @@ Your User Management System is now complete with:
 - ✅ Responsive design
 - ✅ Dark mode support
 
-**Access at:** http://localhost:3000/users (Admin only)
+**Access at:** https://dubail-film-maker-website-portfolio.vercel.app/users (Admin only)
 
 **Your CMS now has complete user management capabilities!** 🎉

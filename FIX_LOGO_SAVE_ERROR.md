@@ -20,7 +20,7 @@ npm run dev
 ```
 
 ### Step 3: Try Saving Again
-1. Go to http://localhost:3000/settings
+1. Go to https://dubail-film-maker-website-portfolio.vercel.app/settings
 2. Click "Logo Settings" tab
 3. Upload your logos (if not already uploaded)
 4. Click "Save Logo Settings"

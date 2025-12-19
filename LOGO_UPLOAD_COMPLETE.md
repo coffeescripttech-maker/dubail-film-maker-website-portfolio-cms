@@ -149,7 +149,7 @@ final_cms/
    ```
 
 2. **Access Settings**
-   - Go to http://localhost:3000/settings
+   - Go to https://dubail-film-maker-website-portfolio.vercel.app/settings
    - Click "Logo Settings" tab
 
 3. **Upload Logos**

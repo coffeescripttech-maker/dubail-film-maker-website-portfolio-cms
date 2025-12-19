@@ -48,7 +48,7 @@ npm run dev
 
 ## Test It
 
-1. Go to http://localhost:3000/reset-password
+1. Go to https://dubail-film-maker-website-portfolio.vercel.app/reset-password
 2. Enter email: `admin@example.com`
 3. Check your email inbox
 4. Click the reset link

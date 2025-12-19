@@ -18,7 +18,7 @@ npm run dev
 
 ### 2. Try Uploading & Saving Again
 
-1. Go to http://localhost:3000/settings
+1. Go to https://dubail-film-maker-website-portfolio.vercel.app/settings
 2. Click "Logo Settings" tab
 3. Upload your logos (SVG now supported!)
 4. Click "Save Logo Settings"

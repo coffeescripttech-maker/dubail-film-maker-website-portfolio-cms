@@ -23,7 +23,7 @@ add-logo-fields.bat
 ## Step-by-Step Guide
 
 ### Step 1: Login as Admin
-1. Go to http://localhost:3000/signin
+1. Go to https://dubail-film-maker-website-portfolio.vercel.app/signin
 2. Login with admin credentials:
    - Email: `admin@example.com`
    - Password: `admin123`
@@ -214,8 +214,8 @@ After the page reloads, check:
 ## Quick Reference
 
 ### URLs
-- Settings Page: http://localhost:3000/settings
-- Sign In Page: http://localhost:3000/signin
+- Settings Page: https://dubail-film-maker-website-portfolio.vercel.app/settings
+- Sign In Page: https://dubail-film-maker-website-portfolio.vercel.app/signin
 
 ### Admin Credentials
 - Email: `admin@example.com`

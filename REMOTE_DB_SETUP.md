@@ -73,7 +73,7 @@ npm run dev
 
 ### 2. Login to the Dashboard
 
-Navigate to: http://localhost:3000/auth/signin
+Navigate to: https://dubail-film-maker-website-portfolio.vercel.app/auth/signin
 
 Use demo credentials:
 - Email: `admin@example.com`
@@ -81,7 +81,7 @@ Use demo credentials:
 
 ### 3. Test Project Management
 
-Go to: http://localhost:3000/projects
+Go to: https://dubail-film-maker-website-portfolio.vercel.app/projects
 
 You should see the 5 sample projects from your remote database:
 - The Abu Dhabi Plan

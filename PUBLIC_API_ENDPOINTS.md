@@ -147,7 +147,7 @@ Your portfolio website's `data-loader.js` is configured to fetch from these endp
 ```javascript
 const API_CONFIG = {
   USE_CMS_API: true,
-  CMS_BASE_URL: 'http://localhost:3000/api/public',
+  CMS_BASE_URL: 'https://dubail-film-maker-website-portfolio.vercel.app/api/public',
   LOCAL_PATHS: {
     projects: 'data/project.json',
     about: 'data/about.json',
@@ -162,10 +162,10 @@ The system automatically falls back to local JSON files if the API is unavailabl
 ## Testing
 
 Test the endpoints locally:
-- http://localhost:3000/api/public/projects
-- http://localhost:3000/api/public/about
-- http://localhost:3000/api/public/contact
-- http://localhost:3000/api/public/header
+- https://dubail-film-maker-website-portfolio.vercel.app/api/public/projects
+- https://dubail-film-maker-website-portfolio.vercel.app/api/public/about
+- https://dubail-film-maker-website-portfolio.vercel.app/api/public/contact
+- https://dubail-film-maker-website-portfolio.vercel.app/api/public/header
 
 ## Deployment
 

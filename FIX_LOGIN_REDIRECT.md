@@ -118,7 +118,7 @@ if (result?.error) {
 1. User enters credentials
 2. Click "Sign in"
 3. Authentication succeeds
-4. Redirects to: /signin?callbackUrl=http://localhost:3000/
+4. Redirects to: /signin?callbackUrl=https://dubail-film-maker-website-portfolio.vercel.app/
 5. User stuck on login page ❌
 ```
 

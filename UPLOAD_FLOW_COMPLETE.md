@@ -176,7 +176,7 @@ Saving to storage...
 
 ```
 Request:
-  POST http://localhost:3000/api/upload
+  POST https://dubail-film-maker-website-portfolio.vercel.app/api/upload
   
 Timeline:
   0-60s:  Status: (pending)

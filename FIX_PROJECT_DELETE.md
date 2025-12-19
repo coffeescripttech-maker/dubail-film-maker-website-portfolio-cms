@@ -2,7 +2,7 @@
 
 ## Problem
 
-When trying to delete a project from the Projects page (`http://localhost:3000/projects`), the project was not being deleted from the database.
+When trying to delete a project from the Projects page (`https://dubail-film-maker-website-portfolio.vercel.app/projects`), the project was not being deleted from the database.
 
 ---
 
@@ -132,7 +132,7 @@ export async function deleteProject(id: string): Promise<boolean> {
 
 2. **Go to Projects page:**
    ```
-   http://localhost:3000/projects
+   https://dubail-film-maker-website-portfolio.vercel.app/projects
    ```
 
 3. **Try to delete a project:**

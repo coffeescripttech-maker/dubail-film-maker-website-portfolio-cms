@@ -30,7 +30,7 @@ Your CMS is fully configured and ready for production deployment!
 npm run dev
 
 # Access at: http://localhost:3000
-# Login at: http://localhost:3000/signin
+# Login at: https://dubail-film-maker-website-portfolio.vercel.app/signin
 ```
 
 ### Database Management:

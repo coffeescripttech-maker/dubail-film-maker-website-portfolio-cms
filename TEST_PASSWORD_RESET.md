@@ -13,7 +13,7 @@
 ## Testing Steps
 
 ### 1. Test Password Reset Request
-1. Go to: http://localhost:3000/reset-password
+1. Go to: https://dubail-film-maker-website-portfolio.vercel.app/reset-password
 2. Enter email: `admin@example.com`
 3. Click "Send Reset Link"
 4. Check the server logs for email sending status
@@ -41,14 +41,14 @@ Check for errors like:
 
 ### 5. Test Reset Link
 1. Copy the reset link from email
-2. Should look like: `http://localhost:3000/reset-password/[long-token]`
+2. Should look like: `https://dubail-film-maker-website-portfolio.vercel.app/reset-password/[long-token]`
 3. Click the link
 4. Enter new password
 5. Confirm password
 6. Submit
 
 ### 6. Verify Password Changed
-1. Go to: http://localhost:3000/signin
+1. Go to: https://dubail-film-maker-website-portfolio.vercel.app/signin
 2. Try logging in with new password
 3. Should successfully log in
 

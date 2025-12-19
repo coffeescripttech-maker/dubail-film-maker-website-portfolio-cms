@@ -160,8 +160,8 @@ The profile page now displays **actual user data** from the D1 database instead 
 ## 🧪 Testing
 
 ### Test Profile View:
-1. Login at: http://localhost:3000/signin
-2. Go to: http://localhost:3000/profile
+1. Login at: https://dubail-film-maker-website-portfolio.vercel.app/signin
+2. Go to: https://dubail-film-maker-website-portfolio.vercel.app/profile
 3. Verify your actual user data is displayed
 
 ### Test Profile Edit:

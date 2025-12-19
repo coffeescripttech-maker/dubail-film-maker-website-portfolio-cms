@@ -329,9 +329,9 @@ Your Dubai Filmmaker CMS is now **100% integrated** with real data:
 
 ## 📍 Quick Access
 
-**Login:** http://localhost:3000/signin
-**Profile:** http://localhost:3000/profile
-**Projects:** http://localhost:3000/projects
+**Login:** https://dubail-film-maker-website-portfolio.vercel.app/signin
+**Profile:** https://dubail-film-maker-website-portfolio.vercel.app/profile
+**Projects:** https://dubail-film-maker-website-portfolio.vercel.app/projects
 
 **Test Accounts:**
 - Admin: admin@example.com / admin123

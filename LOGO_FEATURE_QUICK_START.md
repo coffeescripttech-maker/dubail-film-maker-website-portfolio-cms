@@ -30,7 +30,7 @@ npm run dev
 ```
 
 ### Step 3: Upload Your Logos
-1. Go to http://localhost:3000/settings
+1. Go to https://dubail-film-maker-website-portfolio.vercel.app/settings
 2. Click on "Logo Settings" tab (🎨 icon)
 3. Upload your three logos:
    - Light Mode Logo (for light theme)

@@ -45,7 +45,7 @@ npm run dev
 
 ## Testing
 
-1. Go to http://localhost:3000/reset-password
+1. Go to https://dubail-film-maker-website-portfolio.vercel.app/reset-password
 2. Enter email of a user in your database
 3. Check Gmail inbox
 4. Click reset link
@@ -276,7 +276,7 @@ GMAIL_APP_PASSWORD=16-char-password
 npm install nodemailer @types/nodemailer
 
 # Test
-# Go to http://localhost:3000/reset-password
+# Go to https://dubail-film-maker-website-portfolio.vercel.app/reset-password
 ```
 
 ---

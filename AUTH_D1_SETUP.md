@@ -57,7 +57,7 @@ You should see:
    npm run dev
    ```
 
-2. Go to: http://localhost:3000/signin
+2. Go to: https://dubail-film-maker-website-portfolio.vercel.app/signin
 
 3. Login with:
    - Email: `admin@example.com`

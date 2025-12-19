@@ -81,7 +81,7 @@ npx wrangler d1 execute DB --file=./database/add-logo-fields.sql
 ### For Administrators
 
 1. **Navigate to Settings**
-   - Go to http://localhost:3000/settings
+   - Go to https://dubail-film-maker-website-portfolio.vercel.app/settings
    - Click on "Logo Settings" tab
 
 2. **Upload Logos**

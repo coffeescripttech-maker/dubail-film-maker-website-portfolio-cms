@@ -29,7 +29,7 @@ npm run dev
 
 ## After Restarting
 
-1. Go to http://localhost:3000/settings
+1. Go to https://dubail-film-maker-website-portfolio.vercel.app/settings
 2. Click "Logo Settings" tab
 3. Your uploaded logos should still be there
 4. Click "Save Logo Settings"

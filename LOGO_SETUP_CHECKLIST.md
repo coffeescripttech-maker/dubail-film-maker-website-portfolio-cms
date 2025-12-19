@@ -19,7 +19,7 @@ npm run dev
 **Why?** The server needs to reload the database schema to recognize the new logo columns.
 
 ### Step 3: Upload & Save Logos
-1. Go to http://localhost:3000/settings
+1. Go to https://dubail-film-maker-website-portfolio.vercel.app/settings
 2. Click "Logo Settings" tab (🎨)
 3. Upload your three logos
 4. Click "Save Logo Settings"
@@ -58,7 +58,7 @@ Ctrl+C
 npm run dev
 
 # 3. Go to settings
-# http://localhost:3000/settings → Logo Settings tab
+# https://dubail-film-maker-website-portfolio.vercel.app/settings → Logo Settings tab
 ```
 
 ---

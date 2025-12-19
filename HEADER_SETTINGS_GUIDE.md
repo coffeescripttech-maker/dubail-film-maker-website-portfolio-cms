@@ -101,7 +101,7 @@ wrangler d1 execute portfolio-cms-db --remote --file=database/update-header-conf
 
 Your portfolio website's `data-loader.js` automatically fetches from:
 ```javascript
-const headerConfig = await fetch('http://localhost:3000/api/public/header');
+const headerConfig = await fetch('https://dubail-film-maker-website-portfolio.vercel.app/api/public/header');
 ```
 
 The configuration is then applied by `site-config.js` to style the header and display the correct logo.
@@ -112,7 +112,7 @@ The configuration is then applied by `site-config.js` to style the header and di
 1. Check if logo was uploaded successfully (should see preview in CMS)
 2. Verify R2 storage is configured correctly
 3. Check browser console for errors
-4. Test the public API: `http://localhost:3000/api/public/header`
+4. Test the public API: `https://dubail-film-maker-website-portfolio.vercel.app/api/public/header`
 
 ### Preset not applying?
 1. Make sure you clicked "Save Changes" after selecting preset

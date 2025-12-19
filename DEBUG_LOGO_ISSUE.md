@@ -77,7 +77,7 @@ Check browser console for any errors when loading the image.
 ## Debug Steps
 
 ### Step 1: Check if Image Tag Exists
-1. Go to http://localhost:3000/signin
+1. Go to https://dubail-film-maker-website-portfolio.vercel.app/signin
 2. Press F12
 3. Go to Elements tab
 4. Press Ctrl+F and search for "dubaifilmmaker-light"

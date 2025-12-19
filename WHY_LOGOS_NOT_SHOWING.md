@@ -83,7 +83,7 @@ fetch('/api/settings/logo').then(r => r.json()).then(console.log)
 ### Step 4: Verify Display
 1. Go to http://localhost:3000
 2. Check sidebar logo
-3. Go to http://localhost:3000/signin
+3. Go to https://dubail-film-maker-website-portfolio.vercel.app/signin
 4. Check auth page logo
 
 ### Step 5: Check Database

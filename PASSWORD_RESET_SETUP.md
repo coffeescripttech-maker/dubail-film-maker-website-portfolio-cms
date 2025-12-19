@@ -191,7 +191,7 @@ The system sends a professional HTML email with:
 
 1. **Request Reset**
    ```
-   Go to: http://localhost:3000/reset-password
+   Go to: https://dubail-film-maker-website-portfolio.vercel.app/reset-password
    Enter: admin@example.com
    ```
 
@@ -209,7 +209,7 @@ The system sends a professional HTML email with:
 
 4. **Sign In**
    ```
-   Go to: http://localhost:3000/signin
+   Go to: https://dubail-film-maker-website-portfolio.vercel.app/signin
    Use new password
    ```
 

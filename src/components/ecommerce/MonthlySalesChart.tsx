@@ -6,12 +6,26 @@ import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import { useState } from "react";
 import { Dropdown } from "../ui/dropdown/Dropdown";
 
-// Dynamically import the ReactApexChart component
 const ReactApexChart = dynamic(() => import("react-apexcharts"), {
   ssr: false,
 });
 
-export default function MonthlySalesChart() {
+interface AnalyticsData {
+  timeSeries: Array<{ timestamp: string; pageviews: number; uniques: number }>;
+}
+
+interface MonthlySalesChartProps {
+  analytics: AnalyticsData | null;
+}
+
+export default function MonthlySalesChart({ analytics }: MonthlySalesChartProps) {
+  // Transform timeSeries data for the chart
+  const categories = analytics?.timeSeries.map(item => {
+    const date = new Date(item.timestamp);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }) || [];
+  
+  const visitorData = analytics?.timeSeries.map(item => item.uniques) || [];
   const options: ApexOptions = {
     colors: ["#465fff"],
     chart: {
@@ -39,20 +53,7 @@ export default function MonthlySalesChart() {
       colors: ["transparent"],
     },
     xaxis: {
-      categories: [
-        "Jan",
-        "Feb",
-        "Mar",
-        "Apr",
-        "May",
-        "Jun",
-        "Jul",
-        "Aug",
-        "Sep",
-        "Oct",
-        "Nov",
-        "Dec",
-      ],
+      categories: categories,
       axisBorder: {
         show: false,
       },
@@ -81,20 +82,20 @@ export default function MonthlySalesChart() {
     fill: {
       opacity: 1,
     },
-
     tooltip: {
       x: {
-        show: false,
+        show: true,
       },
       y: {
-        formatter: (val: number) => `${val}`,
+        formatter: (val: number) => `${val} visitors`,
       },
     },
   };
+  
   const series = [
     {
-      name: "Sales",
-      data: [168, 385, 201, 298, 187, 195, 291, 110, 215, 390, 280, 112],
+      name: "Visitors",
+      data: visitorData,
     },
   ];
   const [isOpen, setIsOpen] = useState(false);
@@ -111,7 +112,7 @@ export default function MonthlySalesChart() {
     <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white px-5 pt-5 dark:border-gray-800 dark:bg-white/[0.03] sm:px-6 sm:pt-6">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
-          Monthly Sales
+          Daily Visitors
         </h3>
 
         <div className="relative inline-block">
