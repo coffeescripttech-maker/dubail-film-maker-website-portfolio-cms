@@ -79,7 +79,7 @@ export default function SignInForm() {
             <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg dark:bg-blue-900/20 dark:border-blue-800">
               <p className="text-xs text-blue-600 dark:text-blue-400 font-medium mb-1">Demo Credentials:</p>
               <p className="text-xs text-blue-600 dark:text-blue-400">Admin: admin@example.com / admin123</p>
-              <p className="text-xs text-blue-600 dark:text-blue-400">User: user@example.com / user123</p>
+              {/* <p className="text-xs text-blue-600 dark:text-blue-400">User: user@example.com / user123</p> */}
             </div>
           </div>
           <div>
