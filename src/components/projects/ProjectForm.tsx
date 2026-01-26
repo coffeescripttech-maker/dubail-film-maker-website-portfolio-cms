@@ -4,6 +4,7 @@ import { Project, Credit } from "@/lib/db";
 import Label from "@/components/form/Label";
 import Checkbox from "@/components/form/input/Checkbox";
 import FileUpload from "@/components/upload/FileUpload";
+import ThumbnailManager from "@/components/projects/ThumbnailManager";
 import { PlusIcon, TrashBinIcon } from "@/icons";
 import { toast } from "sonner";
 
@@ -26,6 +27,7 @@ export default function ProjectForm({ project, onSubmit, onCancel, existingProje
     video_url: '',
     poster_image: '',
     poster_image_srcset: '',
+    thumbnail_url: '',
     order_index: 0,
     is_featured: false,
     is_published: true
@@ -78,6 +80,7 @@ export default function ProjectForm({ project, onSubmit, onCancel, existingProje
         video_url: project.video_url || '',
         poster_image: project.poster_image || '',
         poster_image_srcset: project.poster_image_srcset || '',
+        thumbnail_url: project.thumbnail_url || '',
         order_index: project.order_index || 0,
         is_featured: project.is_featured || false,
         is_published: project.is_published !== undefined ? project.is_published : true
@@ -291,7 +294,8 @@ export default function ProjectForm({ project, onSubmit, onCancel, existingProje
       const submitData = {
         ...formData,
         credits: validCredits,
-        order_index: Number(formData.order_index)
+        order_index: Number(formData.order_index),
+        thumbnail_url: formData.thumbnail_url || null
       };
 
       await onSubmit(submitData);
@@ -701,6 +705,41 @@ export default function ProjectForm({ project, onSubmit, onCancel, existingProje
               />
             </div>
           </>
+        )}
+
+        {/* Thumbnail Management Section */}
+        {project?.id && formData.video_url && (
+          <div className="md:col-span-2">
+            <Label>Thumbnail Management</Label>
+            <div className="mt-2 p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+              <ThumbnailManager
+                projectId={project.id}
+                currentThumbnail={formData.thumbnail_url}
+                videoUrl={formData.video_url}
+                onThumbnailChange={(thumbnailUrl) => {
+                  handleInputChange('thumbnail_url', thumbnailUrl);
+                  handleInputChange('poster_image', thumbnailUrl); // Also update poster_image
+                  toast.success('Thumbnail Updated', {
+                    description: 'The thumbnail has been updated successfully.'
+                  });
+                }}
+              />
+            </div>
+            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+              Upload a custom thumbnail or generate one from your video. This will be used as the preview image on the portfolio.
+            </p>
+          </div>
+        )}
+
+        {/* Thumbnail Note for New Projects */}
+        {!project?.id && formData.video_url && (
+          <div className="md:col-span-2">
+            <div className="p-4 border border-blue-200 dark:border-blue-800 rounded-lg bg-blue-50 dark:bg-blue-900/20">
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                ℹ️ <strong>Thumbnail Management:</strong> After creating this project, you'll be able to upload custom thumbnails or generate them from your video.
+              </p>
+            </div>
+          </div>
         )}
 
         {/* Poster Image Upload */}

@@ -3,10 +3,12 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import ComponentCard from "@/components/common/ComponentCard";
 import PageBreadCrumb from "@/components/common/PageBreadCrumb";
-import ProjectTable from "@/components/projects/ProjectTable";
+import DraggableProjectTable from "@/components/projects/DraggableProjectTable";
 import ProjectForm from "@/components/projects/ProjectForm";
 import ProjectFilters from "@/components/projects/ProjectFilters";
 import BulkImport from "@/components/projects/BulkImport";
+import PresetManager from "@/components/projects/PresetManager";
+import PortfolioPreview from "@/components/projects/PortfolioPreview";
 import { Project } from "@/lib/db";
 import { PlusIcon, ArrowUpIcon, TrashBinIcon } from "@/icons";
 import { toast } from "sonner";
@@ -19,6 +21,10 @@ export default function ProjectManagement() {
   const [showBulkImport, setShowBulkImport] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
+  const [reorderMode, setReorderMode] = useState(false);
+  const [showBulkReorderModal, setShowBulkReorderModal] = useState(false);
+  const [bulkReorderData, setBulkReorderData] = useState<Record<string, number>>({});
+  const [showPreview, setShowPreview] = useState(false);
   const [filters, setFilters] = useState({
     category: '',
     featured: '',
@@ -157,6 +163,14 @@ export default function ProjectManagement() {
     setShowBulkImport(false);
   };
 
+  const handleReorderModeChange = async (enabled: boolean) => {
+    setReorderMode(enabled);
+    // If reorder mode is being disabled (after save), refresh the project list
+    if (!enabled) {
+      await fetchProjects();
+    }
+  };
+
   const handleBulkDelete = async () => {
     if (selectedProjects.length === 0) {
       toast.error('No Projects Selected', {
@@ -208,6 +222,86 @@ export default function ProjectManagement() {
     }
   };
 
+  const handleBulkReorder = () => {
+    if (selectedProjects.length === 0) {
+      toast.error('No Projects Selected', {
+        description: 'Please select projects to reorder'
+      });
+      return;
+    }
+
+    // Initialize bulk reorder data with current order indices
+    const initialData: Record<string, number> = {};
+    selectedProjects.forEach(projectId => {
+      const project = projects.find(p => p.id === projectId);
+      if (project) {
+        initialData[projectId] = project.order_index || 0;
+      }
+    });
+    setBulkReorderData(initialData);
+    setShowBulkReorderModal(true);
+  };
+
+  const handleBulkReorderSubmit = async () => {
+    const loadingToast = toast.loading('Reordering Projects', {
+      description: `Updating order for ${selectedProjects.length} project(s)...`
+    });
+
+    try {
+      // Prepare updates array
+      const updates = Object.entries(bulkReorderData).map(([projectId, orderIndex]) => ({
+        projectId,
+        orderIndex
+      }));
+
+      const response = await fetch('/api/projects/reorder', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ updates }),
+      });
+
+      if (response.ok) {
+        toast.success('Projects Reordered!', {
+          description: `Successfully reordered ${selectedProjects.length} project(s)`,
+          id: loadingToast
+        });
+        setShowBulkReorderModal(false);
+        setBulkReorderData({});
+        setSelectedProjects([]);
+        await fetchProjects();
+      } else {
+        const error = await response.json();
+        toast.error('Reorder Failed', {
+          description: error.error || 'Failed to reorder projects',
+          id: loadingToast
+        });
+      }
+    } catch (error) {
+      console.error('Error reordering projects:', error);
+      toast.error('Error', {
+        description: 'An error occurred while reordering projects',
+        id: loadingToast
+      });
+    }
+  };
+
+  const handleBulkReorderCancel = () => {
+    setShowBulkReorderModal(false);
+    setBulkReorderData({});
+  };
+
+  const handleOrderIndexChange = (projectId: string, value: string) => {
+    const orderIndex = parseInt(value, 10);
+    if (!isNaN(orderIndex)) {
+      setBulkReorderData(prev => ({
+        ...prev,
+        [projectId]: orderIndex
+      }));
+    }
+  };
+
   return (
     <div className="space-y-6">
       <PageBreadCrumb pageTitle="Project Management" />
@@ -226,6 +320,16 @@ export default function ProjectManagement() {
             </div>
             <div className="flex gap-2">
               <button
+                onClick={() => setShowPreview(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                Preview Portfolio
+              </button>
+              <button
                 onClick={handleBulkImport}
                 className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700"
               >
@@ -243,12 +347,12 @@ export default function ProjectManagement() {
           </div>
 
           {/* Filters */}
-          <ComponentCard title="Filters">
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
             <ProjectFilters 
               filters={filters}
               onFiltersChange={setFilters}
             />
-          </ComponentCard>
+          </div>
 
           {/* Bulk Actions Bar */}
           {selectedProjects.length > 0 && (
@@ -266,6 +370,15 @@ export default function ProjectManagement() {
               </div>
               <div className="flex items-center gap-2">
                 <button
+                  onClick={handleBulkReorder}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                  Reorder Selected
+                </button>
+                <button
                   onClick={handleBulkDelete}
                   className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
                 >
@@ -278,13 +391,23 @@ export default function ProjectManagement() {
 
           {/* Projects Table */}
           <ComponentCard title={`Projects (${projects.length})`}>
-            <ProjectTable
+            <DraggableProjectTable
               projects={projects}
               loading={loading}
               onEdit={handleEditProject}
               onDelete={handleDeleteProject}
               selectedProjects={selectedProjects}
               onSelectionChange={setSelectedProjects}
+              reorderMode={reorderMode}
+              onReorderModeChange={handleReorderModeChange}
+            />
+          </ComponentCard>
+
+          {/* Preset Manager */}
+          <ComponentCard title="Film Arrangement Presets">
+            <PresetManager
+              currentProjects={projects}
+              onPresetApplied={fetchProjects}
             />
           </ComponentCard>
         </>
@@ -310,6 +433,84 @@ export default function ProjectManagement() {
             existingProjects={projects}
           />
         </ComponentCard>
+      )}
+
+      {/* Bulk Reorder Modal */}
+      {showBulkReorderModal && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden flex flex-col">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                Bulk Reorder Projects
+              </h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                Assign new order indices to {selectedProjects.length} selected project(s)
+              </p>
+            </div>
+
+            {/* Modal Body */}
+            <div className="px-6 py-4 overflow-y-auto flex-1">
+              <div className="space-y-4">
+                {selectedProjects.map(projectId => {
+                  const project = projects.find(p => p.id === projectId);
+                  if (!project) return null;
+
+                  return (
+                    <div key={projectId} className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                      <div className="flex-1">
+                        <h3 className="font-medium text-gray-900 dark:text-white">
+                          {project.title}
+                        </h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          {project.client && `${project.client} • `}
+                          {project.category || 'Uncategorized'}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <label htmlFor={`order-${projectId}`} className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Order:
+                        </label>
+                        <input
+                          id={`order-${projectId}`}
+                          type="number"
+                          min="0"
+                          value={bulkReorderData[projectId] || 0}
+                          onChange={(e) => handleOrderIndexChange(projectId, e.target.value)}
+                          className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
+              <button
+                onClick={handleBulkReorderCancel}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleBulkReorderSubmit}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              >
+                Apply Reorder
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Portfolio Preview Modal */}
+      {showPreview && (
+        <PortfolioPreview
+          projects={projects}
+          onClose={() => setShowPreview(false)}
+        />
       )}
     </div>
   );

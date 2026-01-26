@@ -1,65 +1,55 @@
+// Public About API
+// GET: Fetch about content and images for portfolio website
+// No authentication required
+
 import { NextResponse } from 'next/server';
 import { queryD1 } from '@/lib/d1-client';
 
-// CORS headers for cross-origin requests
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-};
-
-// Handle OPTIONS request for CORS preflight
-export async function OPTIONS() {
-  return NextResponse.json({}, { headers: corsHeaders });
-}
-
-// Public API endpoint - no authentication required
-// This endpoint is specifically for the portfolio website to fetch about content
 export async function GET() {
   try {
-    const result = await queryD1('SELECT * FROM about_content WHERE id = 1');
-    
-    if (!result || !result.results || result.results.length === 0) {
-      return NextResponse.json(
-        { error: 'About content not found' },
-        { status: 404, headers: corsHeaders }
-      );
-    }
+    // Fetch about content
+    const aboutResult = await queryD1(
+      'SELECT * FROM about_content WHERE id = 1'
+    );
 
-    const aboutContent = result.results[0];
+    // Fetch about images
+    const imagesResult = await queryD1(
+      'SELECT id, url, alt, order_index FROM about_images ORDER BY order_index ASC, created_at ASC'
+    );
 
-    // Transform to match portfolio website's expected structure
-    const transformedData = {
+    const aboutContent = aboutResult?.results?.[0] || {};
+    const images = imagesResult?.results || [];
+
+    // Format response to match existing about.json structure
+    const response = {
       page: {
         title: 'About',
         description: 'Award-winning filmmaker and international film production house based in Dubai.',
         founder: {
-          name: aboutContent.founder_name || '',
-          title: aboutContent.founder_title || '',
+          name: aboutContent.founder_name || 'Ahmed Al Mutawa',
+          title: aboutContent.founder_title || 'FILM DIRECTOR / EXECUTIVE PRODUCER',
           bio: aboutContent.founder_bio || ''
         },
         content: {
           main_text: aboutContent.company_description || '',
           video_button: {
-            text: aboutContent.video_button_text || '',
+            text: aboutContent.video_button_text || 'view DubaiFilmMaker reel 2025',
             video_url: aboutContent.video_url || ''
           }
-        }
+        },
+        images: images.map((img: any) => ({
+          url: img.url,
+          alt: img.alt || ''
+        }))
       }
     };
 
-    return NextResponse.json(
-      transformedData,
-      { headers: corsHeaders }
-    );
+    return NextResponse.json(response);
   } catch (error) {
-    console.error('Error fetching public about content:', error);
+    console.error('Error fetching public about data:', error);
     return NextResponse.json(
-      { 
-        error: 'Failed to fetch about content',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500, headers: corsHeaders }
+      { error: 'Failed to fetch about data' },
+      { status: 500 }
     );
   }
 }

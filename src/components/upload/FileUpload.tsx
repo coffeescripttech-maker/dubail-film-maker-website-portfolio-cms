@@ -43,7 +43,12 @@ export default function FileUpload({
   const [totalBytes, setTotalBytes] = useState(0);
   const [processing, setProcessing] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+  const [showRetry, setShowRetry] = useState(false);
+  const [lastError, setLastError] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const lastFileRef = useRef<File | null>(null);
+  const MAX_RETRIES = 3;
 
   const defaultAccept = type === 'image' 
     ? 'image/jpeg,image/png,image/gif,image/webp'
@@ -63,7 +68,19 @@ export default function FileUpload({
       return;
     }
 
+    // Store file for potential retry
+    lastFileRef.current = file;
+    setRetryCount(0);
+    setShowRetry(false);
     uploadFile(file);
+  };
+
+  const handleRetry = () => {
+    if (lastFileRef.current && retryCount < MAX_RETRIES) {
+      setRetryCount(prev => prev + 1);
+      setShowRetry(false);
+      uploadFile(lastFileRef.current);
+    }
   };
 
   const uploadFile = async (file: File) => {
@@ -71,9 +88,13 @@ export default function FileUpload({
     setUploadProgress(0);
     setUploadedBytes(0);
     setTotalBytes(file.size);
+    setLastError('');
     
     try {
-      // Step 1: Get presigned URL from our API
+      // Step 1: Get presigned URL from our API with timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
       const presignedResponse = await fetch('/api/upload/presigned-url', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -81,17 +102,24 @@ export default function FileUpload({
           fileName: file.name,
           fileType: file.type,
           folder: folder
-        })
+        }),
+        signal: controller.signal
       });
 
+      clearTimeout(timeoutId);
+
       if (!presignedResponse.ok) {
-        throw new Error('Failed to get upload URL');
+        const errorData = await presignedResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to get upload URL');
       }
 
       const { presignedUrl, key, publicUrl } = await presignedResponse.json();
 
       // Step 2: Upload directly to R2 using presigned URL
       const xhr = new XMLHttpRequest();
+
+      // Set timeout for upload
+      xhr.timeout = 300000; // 5 minutes
 
       // Track upload progress
       xhr.upload.addEventListener('progress', (e) => {
@@ -118,11 +146,15 @@ export default function FileUpload({
         });
 
         xhr.addEventListener('error', () => {
-          reject(new Error('Network error during upload'));
+          reject(new Error('Network error during upload. Please check your connection.'));
         });
 
         xhr.addEventListener('abort', () => {
           reject(new Error('Upload cancelled'));
+        });
+
+        xhr.addEventListener('timeout', () => {
+          reject(new Error('Upload timed out. Please try again.'));
         });
       });
 
@@ -135,6 +167,9 @@ export default function FileUpload({
 
       // Upload successful
       setProcessing(false);
+      setShowRetry(false);
+      setRetryCount(0);
+      lastFileRef.current = null;
       
       const result: UploadResult = {
         key,
@@ -153,17 +188,34 @@ export default function FileUpload({
     } catch (error) {
       console.error('Upload error:', error);
       const errorMsg = error instanceof Error ? error.message : 'Upload failed';
+      setLastError(errorMsg);
+      
+      // Show retry option if we haven't exceeded max retries
+      if (retryCount < MAX_RETRIES) {
+        setShowRetry(true);
+        toast.error('Upload Failed', {
+          description: `${errorMsg}. Click retry to try again.`,
+          action: {
+            label: 'Retry',
+            onClick: handleRetry
+          }
+        });
+      } else {
+        toast.error('Upload Failed', {
+          description: `${errorMsg}. Maximum retry attempts reached.`
+        });
+      }
+      
       onUploadError?.(errorMsg);
-      toast.error('Upload Error', {
-        description: errorMsg
-      });
     } finally {
       setUploading(false);
       setProcessing(false);
       setTimeout(() => {
-        setUploadProgress(0);
-        setUploadedBytes(0);
-        setTotalBytes(0);
+        if (!showRetry) {
+          setUploadProgress(0);
+          setUploadedBytes(0);
+          setTotalBytes(0);
+        }
       }, 1000);
     }
   };
@@ -277,12 +329,14 @@ export default function FileUpload({
         className={`relative border-2 border-dashed rounded-lg p-6 transition-colors ${
           dragOver
             ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/20'
+            : showRetry
+            ? 'border-red-300 dark:border-red-600'
             : 'border-gray-300 dark:border-gray-600'
         } ${uploading ? 'opacity-50 pointer-events-none' : 'cursor-pointer hover:border-gray-400'}`}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
-        onClick={handleClick}
+        onClick={!showRetry ? handleClick : undefined}
       >
         <input
           ref={fileInputRef}
@@ -293,7 +347,39 @@ export default function FileUpload({
         />
 
         <div className="text-center">
-          {uploading || processing ? (
+          {showRetry ? (
+            <div className="space-y-3">
+              <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center mx-auto dark:bg-red-900/30">
+                <svg className="w-6 h-6 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-red-900 dark:text-red-300">
+                  Upload Failed
+                </p>
+                <p className="text-xs text-red-700 dark:text-red-400">
+                  {lastError}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Attempt {retryCount} of {MAX_RETRIES}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRetry();
+                }}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Retry Upload
+              </button>
+            </div>
+          ) : uploading || processing ? (
             <div className="space-y-3">
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mx-auto dark:bg-blue-900/30">
                 {processing ? (

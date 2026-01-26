@@ -25,7 +25,8 @@ export async function queryD1(sql: string, params: any[] = []): Promise<any> {
         body: JSON.stringify({
           sql,
           params
-        })
+        }),
+        cache: 'no-store' // Disable caching
       }
     );
 
@@ -230,6 +231,145 @@ export async function deleteProject(id: string): Promise<boolean> {
     return true;
   } catch (error) {
     console.error('Error deleting project:', error);
+    return false;
+  }
+}
+
+export async function batchUpdateProjectOrder(updates: Array<{ projectId: string; orderIndex: number }>): Promise<Project[]> {
+  try {
+    // First, validate all project IDs exist
+    const projectIds = updates.map(u => u.projectId);
+    const placeholders = projectIds.map(() => '?').join(',');
+    const existingResult = await queryD1(
+      `SELECT id FROM projects WHERE id IN (${placeholders})`,
+      projectIds
+    );
+    
+    const existingIds = new Set(existingResult.results.map((row: any) => row.id));
+    const missingIds = projectIds.filter(id => !existingIds.has(id));
+    
+    if (missingIds.length > 0) {
+      throw new Error(`Projects not found: ${missingIds.join(', ')}`);
+    }
+
+    // Perform batch update using individual UPDATE statements
+    // D1 doesn't support multi-statement transactions via HTTP API, but we can execute them sequentially
+    for (const update of updates) {
+      await queryD1(
+        'UPDATE projects SET order_index = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+        [update.orderIndex, update.projectId]
+      );
+    }
+
+    // Return updated projects
+    const updatedResult = await queryD1(
+      `SELECT * FROM projects WHERE id IN (${placeholders}) ORDER BY order_index ASC`,
+      projectIds
+    );
+
+    if (updatedResult && updatedResult.results) {
+      return updatedResult.results.map((row: any) => ({
+        ...row,
+        credits: row.credits ? JSON.parse(row.credits) : [],
+        is_featured: Boolean(row.is_featured),
+        is_published: Boolean(row.is_published)
+      }));
+    }
+
+    return [];
+  } catch (error) {
+    console.error('Error batch updating project order:', error);
+    throw error;
+  }
+}
+
+// Film Preset Types
+export interface FilmPreset {
+  id: string;
+  name: string;
+  description?: string;
+  order_config: Array<{ projectId: string; orderIndex: number }>;
+  created_at: string;
+  updated_at: string;
+}
+
+// Film Preset Functions
+export async function createFilmPreset(
+  name: string,
+  description: string | undefined,
+  orderConfig: Array<{ projectId: string; orderIndex: number }>
+): Promise<FilmPreset> {
+  const id = crypto.randomUUID();
+  const orderConfigJson = JSON.stringify(orderConfig);
+  
+  try {
+    await queryD1(
+      `INSERT INTO film_presets (id, name, description, order_config) VALUES (?, ?, ?, ?)`,
+      [id, name, description || null, orderConfigJson]
+    );
+    
+    return {
+      id,
+      name,
+      description,
+      order_config: orderConfig,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error('Error creating film preset:', error);
+    throw error;
+  }
+}
+
+export async function getAllFilmPresets(): Promise<FilmPreset[]> {
+  try {
+    const result = await queryD1(
+      'SELECT * FROM film_presets ORDER BY created_at DESC'
+    );
+    
+    if (result && result.results) {
+      return result.results.map((row: any) => ({
+        ...row,
+        order_config: row.order_config ? JSON.parse(row.order_config) : []
+      }));
+    }
+    
+    return [];
+  } catch (error) {
+    console.error('Error fetching film presets:', error);
+    return [];
+  }
+}
+
+export async function getFilmPresetById(id: string): Promise<FilmPreset | null> {
+  try {
+    const result = await queryD1(
+      'SELECT * FROM film_presets WHERE id = ?',
+      [id]
+    );
+    
+    if (result && result.results && result.results.length > 0) {
+      const row = result.results[0];
+      return {
+        ...row,
+        order_config: row.order_config ? JSON.parse(row.order_config) : []
+      };
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error fetching film preset:', error);
+    return null;
+  }
+}
+
+export async function deleteFilmPreset(id: string): Promise<boolean> {
+  try {
+    await queryD1('DELETE FROM film_presets WHERE id = ?', [id]);
+    return true;
+  } catch (error) {
+    console.error('Error deleting film preset:', error);
     return false;
   }
 }

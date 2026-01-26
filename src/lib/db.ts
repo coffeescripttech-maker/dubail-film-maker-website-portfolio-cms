@@ -33,6 +33,11 @@ export interface Project {
   is_published: boolean;
   created_at: string;
   updated_at: string;
+  // Thumbnail fields
+  thumbnail_url?: string | null;
+  thumbnail_type?: 'custom' | 'video_frame' | 'default' | null;
+  thumbnail_timestamp?: number | null;
+  thumbnail_metadata?: string | null; // JSON string
 }
 
 export interface Credit {

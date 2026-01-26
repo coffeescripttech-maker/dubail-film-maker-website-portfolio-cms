@@ -1,17 +1,19 @@
 "use client";
 import React, { useState } from "react";
 import AboutSettings from "./AboutSettings";
+import AboutImagesSettings from "./AboutImagesSettings";
 import ContactSettings from "./ContactSettings";
 import HeaderSettings from "./HeaderSettings";
 import LogoSettings from "./LogoSettings";
 
-type TabType = 'about' | 'contact' | 'header' | 'logo';
+type TabType = 'about' | 'about-images' | 'contact' | 'header' | 'logo';
 
 export default function SettingsManagement() {
   const [activeTab, setActiveTab] = useState<TabType>('about');
 
   const tabs = [
     { id: 'about' as TabType, name: 'About Content', icon: '📝' },
+    { id: 'about-images' as TabType, name: 'About Images', icon: '🖼️' },
     { id: 'contact' as TabType, name: 'Contact Info', icon: '📞' },
     { id: 'logo' as TabType, name: 'Logo Settings', icon: '🎨' },
     { id: 'header' as TabType, name: 'Header Config', icon: '⚙️' },
@@ -45,6 +47,7 @@ export default function SettingsManagement() {
       {/* Tab Content */}
       <div className="py-4">
         {activeTab === 'about' && <AboutSettings />}
+        {activeTab === 'about-images' && <AboutImagesSettings />}
         {activeTab === 'contact' && <ContactSettings />}
         {activeTab === 'logo' && <LogoSettings />}
         {activeTab === 'header' && <HeaderSettings />}
