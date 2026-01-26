@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
         RESPONSIVE_SIZES.large.width, 
         RESPONSIVE_SIZES.large.height
       );
-      optimizedBuffer = resized.buffer;
+      optimizedBuffer = Buffer.from(resized.buffer);
     }
 
     // Step 2: Compress the main image
