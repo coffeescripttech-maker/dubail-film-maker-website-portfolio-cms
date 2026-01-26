@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { toast } from "sonner";
+import RichTextEditor from "../common/RichTextEditor";
 
 interface AboutContent {
   id: number;
@@ -25,6 +26,9 @@ interface ValidationErrors {
 export default function AboutSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [videoSource, setVideoSource] = useState<'url' | 'upload'>('url');
   const [formData, setFormData] = useState<AboutContent>({
     id: 1,
     founder_name: '',
@@ -53,11 +57,98 @@ export default function AboutSettings() {
 
       const data = await response.json();
       setFormData(data);
+      
+      // Set video source based on whether there's a URL
+      if (data.video_url) {
+        // Check if it's an uploaded file (contains our R2 domain) or external URL
+        setVideoSource(data.video_url.includes(process.env.NEXT_PUBLIC_R2_PUBLIC_URL || 'r2.dev') ? 'upload' : 'url');
+      }
     } catch (error) {
       console.error('Error fetching about content:', error);
       toast.error('Failed to load about content');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('video/')) {
+      toast.error('Please select a video file');
+      return;
+    }
+
+    // Validate file size (500MB limit)
+    const maxSize = 500 * 1024 * 1024; // 500MB
+    if (file.size > maxSize) {
+      toast.error('Video size must be less than 500MB');
+      return;
+    }
+
+    try {
+      setUploadingVideo(true);
+      setUploadProgress(10);
+
+      // Get presigned URL
+      const presignedResponse = await fetch('/api/upload/presigned-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fileName: file.name,
+          fileType: file.type,
+          folder: 'about-videos',
+        }),
+      });
+
+      if (!presignedResponse.ok) {
+        const errorData = await presignedResponse.json();
+        throw new Error(errorData.error || 'Failed to get upload URL');
+      }
+
+      const { presignedUrl, publicUrl } = await presignedResponse.json();
+      setUploadProgress(30);
+
+      // Upload to R2 with progress tracking
+      const xhr = new XMLHttpRequest();
+      
+      xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable) {
+          const percentComplete = 30 + Math.round((e.loaded / e.total) * 60);
+          setUploadProgress(percentComplete);
+        }
+      });
+
+      await new Promise((resolve, reject) => {
+        xhr.addEventListener('load', () => {
+          if (xhr.status === 200) {
+            resolve(xhr.response);
+          } else {
+            reject(new Error('Upload failed'));
+          }
+        });
+        xhr.addEventListener('error', () => reject(new Error('Upload failed')));
+        xhr.open('PUT', presignedUrl);
+        xhr.setRequestHeader('Content-Type', file.type);
+        xhr.send(file);
+      });
+
+      setUploadProgress(100);
+
+      // Update form data with the new video URL
+      setFormData({ ...formData, video_url: publicUrl });
+      toast.success('Video uploaded successfully');
+      
+      // Reset file input
+      e.target.value = '';
+    } catch (error) {
+      console.error('Error uploading video:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to upload video');
+    } finally {
+      setUploadingVideo(false);
+      setTimeout(() => setUploadProgress(0), 1000);
     }
   };
 
@@ -202,16 +293,12 @@ export default function AboutSettings() {
             <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
               Founder Bio
             </label>
-            <textarea
+            <RichTextEditor
               value={formData.founder_bio}
-              onChange={(e) => setFormData({ ...formData, founder_bio: e.target.value })}
-              rows={8}
-              className="w-full px-4 py-3 text-sm border border-gray-300 rounded-lg dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Enter founder biography (HTML supported)"
+              onChange={(value) => setFormData({ ...formData, founder_bio: value })}
+              placeholder="Enter founder biography..."
+              rows={10}
             />
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              HTML tags like &lt;br /&gt; are supported for formatting
-            </p>
           </div>
         </div>
       </div>
@@ -226,16 +313,12 @@ export default function AboutSettings() {
           <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
             Company Description
           </label>
-          <textarea
+          <RichTextEditor
             value={formData.company_description}
-            onChange={(e) => setFormData({ ...formData, company_description: e.target.value })}
-            rows={6}
-            className="w-full px-4 py-3 text-sm border border-gray-300 rounded-lg dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Enter company description (HTML supported)"
+            onChange={(value) => setFormData({ ...formData, company_description: value })}
+            placeholder="Enter company description..."
+            rows={8}
           />
-          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            HTML tags like &lt;br /&gt; are supported for formatting
-          </p>
         </div>
       </div>
 
@@ -261,32 +344,103 @@ export default function AboutSettings() {
 
           <div>
             <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-              Video URL
+              Video Source
             </label>
-            <input
-              type="url"
-              value={formData.video_url}
-              onChange={(e) => handleFieldChange('video_url', e.target.value)}
-              onBlur={() => setTouched({ ...touched, video_url: true })}
-              className={`w-full px-4 py-3 text-sm border rounded-lg dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-2 ${
-                touched.video_url && errors.video_url
-                  ? 'border-red-500 focus:ring-red-500'
-                  : touched.video_url && !errors.video_url && formData.video_url
-                  ? 'border-green-500 focus:ring-green-500'
-                  : 'border-gray-300 dark:border-gray-700 focus:ring-blue-500'
-              }`}
-              placeholder="https://example.com/video.mp4"
-            />
-            {touched.video_url && errors.video_url && (
-              <p className="mt-1 text-xs text-red-500">{errors.video_url}</p>
-            )}
-            {touched.video_url && !errors.video_url && formData.video_url && (
-              <p className="mt-1 text-xs text-green-500 flex items-center gap-1">
-                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                </svg>
-                Valid URL
-              </p>
+            <div className="flex gap-4 mb-3">
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="videoSource"
+                  value="url"
+                  checked={videoSource === 'url'}
+                  onChange={() => setVideoSource('url')}
+                  className="mr-2"
+                />
+                <span className="text-sm">External URL</span>
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="videoSource"
+                  value="upload"
+                  checked={videoSource === 'upload'}
+                  onChange={() => setVideoSource('upload')}
+                  className="mr-2"
+                />
+                <span className="text-sm">Upload Video</span>
+              </label>
+            </div>
+
+            {videoSource === 'url' ? (
+              <>
+                <input
+                  type="url"
+                  value={formData.video_url}
+                  onChange={(e) => handleFieldChange('video_url', e.target.value)}
+                  onBlur={() => setTouched({ ...touched, video_url: true })}
+                  className={`w-full px-4 py-3 text-sm border rounded-lg dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-2 ${
+                    touched.video_url && errors.video_url
+                      ? 'border-red-500 focus:ring-red-500'
+                      : touched.video_url && !errors.video_url && formData.video_url
+                      ? 'border-green-500 focus:ring-green-500'
+                      : 'border-gray-300 dark:border-gray-700 focus:ring-blue-500'
+                  }`}
+                  placeholder="https://example.com/video.mp4"
+                />
+                {touched.video_url && errors.video_url && (
+                  <p className="mt-1 text-xs text-red-500">{errors.video_url}</p>
+                )}
+                {touched.video_url && !errors.video_url && formData.video_url && (
+                  <p className="mt-1 text-xs text-green-500 flex items-center gap-1">
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    Valid URL
+                  </p>
+                )}
+              </>
+            ) : (
+              <>
+                <input
+                  type="file"
+                  accept="video/*"
+                  onChange={handleVideoUpload}
+                  disabled={uploadingVideo}
+                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900/20 dark:file:text-blue-400 dark:hover:file:bg-blue-900/30 disabled:opacity-50"
+                />
+                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  Supported formats: MP4, WebM, MOV. Max size: 500MB
+                </p>
+                
+                {uploadingVideo && (
+                  <div className="mt-3">
+                    <div className="flex items-center justify-between text-xs mb-1">
+                      <span className="text-gray-600 dark:text-gray-400">Uploading video...</span>
+                      <span className="font-medium text-blue-600 dark:text-blue-400">{uploadProgress}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
+                      <div 
+                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${uploadProgress}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {formData.video_url && !uploadingVideo && (
+                  <div className="mt-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                    <p className="text-xs text-green-700 dark:text-green-400 flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                      Video uploaded successfully
+                    </p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 truncate">
+                      {formData.video_url}
+                    </p>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>

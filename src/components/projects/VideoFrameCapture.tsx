@@ -15,6 +15,11 @@ export interface FrameCaptureResult {
   timestamp: number;
 }
 
+interface FilmstripFrame {
+  timestamp: number;
+  dataUrl: string;
+}
+
 export default function VideoFrameCapture({
   videoUrl,
   projectId,
@@ -26,11 +31,15 @@ export default function VideoFrameCapture({
   const [isPlaying, setIsPlaying] = useState(false);
   const [capturing, setCapturing] = useState(false);
   const [videoLoaded, setVideoLoaded] = useState(false);
+  const [filmstripFrames, setFilmstripFrames] = useState<FilmstripFrame[]>([]);
+  const [generatingFilmstrip, setGeneratingFilmstrip] = useState(false);
+  const [filmstripProgress, setFilmstripProgress] = useState(0);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const filmstripRef = useRef<HTMLDivElement>(null);
 
-  // Load video metadata
+  // Load video metadata and generate filmstrip
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -38,10 +47,14 @@ export default function VideoFrameCapture({
     const handleLoadedMetadata = () => {
       setDuration(video.duration);
       setVideoLoaded(true);
+      // Generate filmstrip after video is loaded
+      generateFilmstrip(video);
     };
 
     const handleTimeUpdate = () => {
       setCurrentTime(video.currentTime);
+      // Auto-scroll filmstrip to current position
+      scrollFilmstripToTime(video.currentTime);
     };
 
     const handlePlay = () => setIsPlaying(true);
@@ -59,6 +72,84 @@ export default function VideoFrameCapture({
       video.removeEventListener('pause', handlePause);
     };
   }, []);
+
+  // Generate continuous filmstrip (like video editor timeline)
+  const generateFilmstrip = async (video: HTMLVideoElement) => {
+    if (!canvasRef.current) return;
+
+    setGeneratingFilmstrip(true);
+    const frames: FilmstripFrame[] = [];
+    
+    // Generate frame every 0.5 seconds for smooth filmstrip
+    const frameInterval = 0.5; // seconds between frames
+    const totalFrames = Math.ceil(video.duration / frameInterval);
+    
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+
+    if (!ctx) return;
+
+    // Set canvas size for filmstrip frames (smaller for performance)
+    canvas.width = 120;
+    canvas.height = 68;
+
+    try {
+      for (let i = 0; i < totalFrames; i++) {
+        const timestamp = Math.min(i * frameInterval, video.duration);
+        
+        // Seek to timestamp
+        video.currentTime = timestamp;
+        
+        // Wait for seek to complete
+        await new Promise<void>((resolve) => {
+          const onSeeked = () => {
+            video.removeEventListener('seeked', onSeeked);
+            resolve();
+          };
+          video.addEventListener('seeked', onSeeked);
+        });
+
+        // Draw frame to canvas
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        // Convert to data URL
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+        
+        frames.push({ timestamp, dataUrl });
+        
+        // Update progress
+        setFilmstripProgress(Math.round(((i + 1) / totalFrames) * 100));
+      }
+
+      setFilmstripFrames(frames);
+      
+      // Reset video to start
+      video.currentTime = 0;
+    } catch (error) {
+      console.error('Error generating filmstrip:', error);
+      toast.error('Failed to generate timeline preview');
+    } finally {
+      setGeneratingFilmstrip(false);
+      setFilmstripProgress(0);
+    }
+  };
+
+  // Scroll filmstrip to show current time
+  const scrollFilmstripToTime = (time: number) => {
+    if (!filmstripRef.current || filmstripFrames.length === 0) return;
+
+    const percentage = time / duration;
+    const scrollWidth = filmstripRef.current.scrollWidth - filmstripRef.current.clientWidth;
+    filmstripRef.current.scrollLeft = scrollWidth * percentage;
+  };
+
+  // Handle filmstrip click to seek
+  const handleFilmstripClick = (timestamp: number) => {
+    if (videoRef.current) {
+      videoRef.current.currentTime = timestamp;
+      setCurrentTime(timestamp);
+    }
+  };
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -302,11 +393,79 @@ export default function VideoFrameCapture({
           <div className="space-y-4">
             <div className="flex items-center justify-between text-sm">
               <span className="font-medium text-gray-700 dark:text-gray-300">
-                Timeline
+                Timeline Filmstrip
+                {generatingFilmstrip && (
+                  <span className="ml-2 text-xs text-blue-600 dark:text-blue-400">
+                    Generating... {filmstripProgress}%
+                  </span>
+                )}
               </span>
               <span className="font-mono text-blue-600 dark:text-blue-400">
                 {formatTime(currentTime)} / {formatTime(duration)}
               </span>
+            </div>
+
+            {/* Continuous Filmstrip Container */}
+            <div className="relative bg-gray-900 dark:bg-black rounded-lg border-2 border-gray-700 dark:border-gray-800 overflow-hidden">
+              {generatingFilmstrip ? (
+                <div className="h-24 flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent mb-2"></div>
+                    <p className="text-sm text-gray-400">Generating filmstrip... {filmstripProgress}%</p>
+                  </div>
+                </div>
+              ) : filmstripFrames.length > 0 ? (
+                <>
+                  {/* Scrollable Filmstrip */}
+                  <div
+                    ref={filmstripRef}
+                    className="flex overflow-x-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800 py-2 px-1"
+                    style={{ scrollBehavior: 'smooth' }}
+                  >
+                    {filmstripFrames.map((frame, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => handleFilmstripClick(frame.timestamp)}
+                        className="relative flex-shrink-0 group"
+                        title={formatTime(frame.timestamp)}
+                      >
+                        <img
+                          src={frame.dataUrl}
+                          alt={`Frame at ${formatTime(frame.timestamp)}`}
+                          className="h-20 w-auto object-cover border-r border-gray-700 group-hover:brightness-110 transition-all"
+                        />
+                        {/* Timestamp overlay on hover */}
+                        <div className="absolute bottom-0 left-0 right-0 bg-black/80 text-white text-[10px] px-1 py-0.5 text-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          {formatTime(frame.timestamp)}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Current Position Indicator (Red Line) */}
+                  <div
+                    className="absolute top-0 bottom-0 w-0.5 bg-red-500 pointer-events-none z-10"
+                    style={{
+                      left: `${(currentTime / duration) * 100}%`,
+                      boxShadow: '0 0 8px rgba(239, 68, 68, 0.8)'
+                    }}
+                  >
+                    {/* Triangle at top */}
+                    <div className="absolute -top-1 left-1/2 transform -translate-x-1/2">
+                      <div className="w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-red-500"></div>
+                    </div>
+                    {/* Triangle at bottom */}
+                    <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2">
+                      <div className="w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-red-500"></div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="h-24 flex items-center justify-center text-gray-500">
+                  <p className="text-sm">Loading video...</p>
+                </div>
+              )}
             </div>
 
             {/* Timeline Scrubber */}
@@ -320,8 +479,14 @@ export default function VideoFrameCapture({
                 onChange={handleTimelineChange}
                 disabled={!videoLoaded}
                 className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed
-                  [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-blue-600 [&::-webkit-slider-thumb]:cursor-pointer
-                  [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-blue-600 [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:cursor-pointer"
+                  [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-red-500 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-lg
+                  [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-red-500 [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:shadow-lg"
+              />
+              
+              {/* Progress indicator */}
+              <div 
+                className="absolute top-0 left-0 h-2 bg-red-500 rounded-l-lg pointer-events-none"
+                style={{ width: `${(currentTime / duration) * 100}%` }}
               />
             </div>
 
@@ -465,21 +630,20 @@ export default function VideoFrameCapture({
                 <p className="font-medium mb-2">How to capture the perfect frame:</p>
                 <div className="space-y-2 text-blue-700 dark:text-blue-400">
                   <div>
-                    <p className="font-medium">Navigation Options:</p>
+                    <p className="font-medium">Filmstrip Navigation:</p>
                     <ul className="list-disc list-inside space-y-1 ml-2">
-                      <li><strong>Timeline Scrubber:</strong> Drag to any position</li>
-                      <li><strong>Frame-by-Frame:</strong> Use ← → buttons or Shift+Arrow keys</li>
-                      <li><strong>Skip 5 Seconds:</strong> Use ⏪ ⏩ buttons or Arrow keys</li>
-                      <li><strong>Quick Jump:</strong> Click Start, 25%, 50%, 75%, or End</li>
+                      <li><strong>Click any frame</strong> in the filmstrip to jump instantly</li>
+                      <li><strong>Scroll horizontally</strong> to browse through all frames</li>
+                      <li><strong>Red line indicator</strong> shows your current position</li>
+                      <li><strong>Hover over frames</strong> to see exact timestamps</li>
                     </ul>
                   </div>
                   <div>
-                    <p className="font-medium">Keyboard Shortcuts:</p>
+                    <p className="font-medium">Fine-Tuning:</p>
                     <ul className="list-disc list-inside space-y-1 ml-2">
-                      <li><strong>Space:</strong> Play/Pause</li>
-                      <li><strong>← →:</strong> Skip 5 seconds backward/forward</li>
-                      <li><strong>Shift+← →:</strong> Previous/Next frame (precise!)</li>
-                      <li><strong>Home/End:</strong> Jump to start/end</li>
+                      <li><strong>Timeline Scrubber:</strong> Drag for precise positioning</li>
+                      <li><strong>Frame-by-Frame:</strong> Use ← → buttons or Shift+Arrow keys</li>
+                      <li><strong>Keyboard Shortcuts:</strong> Space (play/pause), Arrow keys (skip 5s)</li>
                     </ul>
                   </div>
                 </div>
@@ -527,3 +691,4 @@ export default function VideoFrameCapture({
     </div>
   );
 }
+
