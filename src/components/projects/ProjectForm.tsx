@@ -19,6 +19,7 @@ export default function ProjectForm({ project, onSubmit, onCancel, existingProje
   const [formData, setFormData] = useState({
     title: '',
     client: '',
+    client_short: '',
     category: '',
     data_cat: '',
     languages: '',
@@ -72,6 +73,7 @@ export default function ProjectForm({ project, onSubmit, onCancel, existingProje
       setFormData({
         title: project.title || '',
         client: project.client || '',
+        client_short: project.client_short || '',
         category: project.category || '',
         data_cat: project.data_cat || '',
         languages: project.languages || '',
@@ -390,6 +392,31 @@ export default function ProjectForm({ project, onSubmit, onCancel, existingProje
                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
               </svg>
               Looks good!
+            </p>
+          )}
+        </div>
+
+        {/* Client Short Name (Optional) */}
+        <div>
+          <Label>
+            Client Name (Short) <span className="text-gray-400 text-xs">(Optional)</span>
+          </Label>
+          <input
+            type="text"
+            value={formData.client_short}
+            onChange={(e) => handleInputChange('client_short', e.target.value)}
+            placeholder="e.g., SHUROOQ (leave empty to use full name)"
+            className="h-11 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 focus:outline-hidden focus:ring-3 focus:border-brand-300 focus:ring-brand-500/10 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:border-gray-700 dark:focus:border-brand-800"
+          />
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            Abbreviated client name for display. If empty, full client name will be used.
+          </p>
+          {formData.client_short && (
+            <p className="mt-1 text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1">
+              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+              Will display as: "{formData.client_short}"
             </p>
           )}
         </div>

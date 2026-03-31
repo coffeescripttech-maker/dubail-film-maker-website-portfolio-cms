@@ -19,6 +19,7 @@ export interface Project {
   id: string;
   title: string;
   client: string | null;
+  client_short?: string | null;
   category: string | null;
   data_cat: string | null;
   languages: string | null;
@@ -91,15 +92,15 @@ export const queries = {
   
   createProject: `
     INSERT INTO projects (
-      id, title, client, category, data_cat, languages, classification,
+      id, title, client, client_short, category, data_cat, languages, classification,
       vimeo_id, video_url, poster_image, poster_image_srcset, credits,
       order_index, is_featured, is_published
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `,
   
   updateProject: `
     UPDATE projects SET
-      title = ?, client = ?, category = ?, data_cat = ?, languages = ?,
+      title = ?, client = ?, client_short = ?, category = ?, data_cat = ?, languages = ?,
       classification = ?, vimeo_id = ?, video_url = ?, poster_image = ?,
       poster_image_srcset = ?, credits = ?, order_index = ?, is_featured = ?,
       is_published = ?, updated_at = CURRENT_TIMESTAMP

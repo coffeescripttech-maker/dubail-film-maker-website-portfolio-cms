@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS projects (
   id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
   client TEXT,
+  client_short TEXT,
   category TEXT,
   data_cat TEXT,
   languages TEXT,

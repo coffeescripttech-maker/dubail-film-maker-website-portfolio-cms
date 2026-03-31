@@ -67,6 +67,7 @@ export async function POST(request: NextRequest) {
     const {
       title,
       client,
+      client_short,
       category,
       data_cat,
       languages,
@@ -90,6 +91,7 @@ export async function POST(request: NextRequest) {
     const newProject = await createProject({
       title,
       client,
+      client_short,
       category,
       data_cat,
       languages,

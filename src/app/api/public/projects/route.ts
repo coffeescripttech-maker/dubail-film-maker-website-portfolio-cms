@@ -28,6 +28,7 @@ export async function GET(request: NextRequest) {
       id: project.id,
       title: project.title,
       client: project.client,
+      client_short: project.client_short,
       category: project.category,
       data_cat: project.data_cat,
       languages: project.languages,

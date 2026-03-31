@@ -47,6 +47,7 @@ export async function PUT(
     const {
       title,
       client,
+      client_short,
       category,
       data_cat,
       languages,
@@ -70,6 +71,7 @@ export async function PUT(
     const updatedProject = await updateProject(id, {
       title,
       client,
+      client_short,
       category,
       data_cat,
       languages,

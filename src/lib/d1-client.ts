@@ -104,14 +104,15 @@ export async function createProject(project: Omit<Project, 'id' | 'created_at' |
   try {
     await queryD1(
       `INSERT INTO projects (
-        id, title, client, category, data_cat, languages, classification,
+        id, title, client, client_short, category, data_cat, languages, classification,
         vimeo_id, video_url, poster_image, poster_image_srcset, credits,
         order_index, is_featured, is_published
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         project.title,
         project.client,
+        project.client_short || null,
         project.category,
         project.data_cat,
         project.languages,
@@ -158,6 +159,10 @@ export async function updateProject(id: string, updates: Partial<Project>): Prom
     if (updates.client !== undefined) {
       fields.push('client = ?');
       values.push(updates.client);
+    }
+    if (updates.client_short !== undefined) {
+      fields.push('client_short = ?');
+      values.push(updates.client_short);
     }
     if (updates.category !== undefined) {
       fields.push('category = ?');
