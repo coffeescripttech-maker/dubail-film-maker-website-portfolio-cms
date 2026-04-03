@@ -77,6 +77,7 @@ export async function POST(request: NextRequest) {
       poster_image,
       poster_image_srcset,
       credits = [],
+      chapters = null,
       order_index = 0,
       is_featured = false,
       is_published = true
@@ -101,6 +102,7 @@ export async function POST(request: NextRequest) {
       poster_image,
       poster_image_srcset,
       credits,
+      chapters,
       order_index,
       is_featured,
       is_published

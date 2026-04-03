@@ -1,10 +1,11 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { Project, Credit } from "@/lib/db";
+import { Project, Credit, VideoChapter } from "@/lib/db";
 import Label from "@/components/form/Label";
 import Checkbox from "@/components/form/input/Checkbox";
 import FileUpload from "@/components/upload/FileUpload";
 import ThumbnailManager from "@/components/projects/ThumbnailManager";
+import VideoChapterMarker from "@/components/projects/VideoChapterMarker";
 import { PlusIcon, TrashBinIcon } from "@/icons";
 import { toast } from "sonner";
 
@@ -26,6 +27,7 @@ export default function ProjectForm({ project, onSubmit, onCancel, existingProje
     classification: '',
     vimeo_id: '',
     video_url: '',
+    video_thumbnail_url: '',
     poster_image: '',
     poster_image_srcset: '',
     thumbnail_url: '',
@@ -38,10 +40,15 @@ export default function ProjectForm({ project, onSubmit, onCancel, existingProje
     { role: '', name: '' }
   ]);
 
+  const [chapters, setChapters] = useState<VideoChapter[]>([]);
+
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [orderIndexWarning, setOrderIndexWarning] = useState<string>('');
+  
+  // Tab state
+  const [activeTab, setActiveTab] = useState<'basic' | 'media' | 'credits' | 'chapters'>('basic');
 
   // Get next available order index
   const getNextAvailableOrderIndex = (): number => {
@@ -80,6 +87,7 @@ export default function ProjectForm({ project, onSubmit, onCancel, existingProje
         classification: project.classification || '',
         vimeo_id: project.vimeo_id || '',
         video_url: project.video_url || '',
+        video_thumbnail_url: project.video_thumbnail_url || '',
         poster_image: project.poster_image || '',
         poster_image_srcset: project.poster_image_srcset || '',
         thumbnail_url: project.thumbnail_url || '',
@@ -88,42 +96,19 @@ export default function ProjectForm({ project, onSubmit, onCancel, existingProje
         is_published: project.is_published !== undefined ? project.is_published : true
       });
       setCredits(project.credits && project.credits.length > 0 ? project.credits : [{ role: '', name: '' }]);
+      setChapters(project.chapters && project.chapters.length > 0 ? project.chapters : []);
     }
   }, [project]);
 
-  // Classification to Category mapping
+  // Classification to Category mapping - matches website filters
   const classificationMapping: Record<string, { category: string; data_cat: string }> = {
     'TVC': { 
       category: 'Television Commercial', 
-      data_cat: 'commercial' 
+      data_cat: 'TVC' 
     },
-    'BRAND FILM': { 
-      category: 'Brand Film / Corporate', 
-      data_cat: 'corporate' 
-    },
-    'DOCUMENTARY': { 
-      category: 'Documentary', 
-      data_cat: 'documentary' 
-    },
-    'COMMERCIAL': { 
-      category: 'Commercial', 
-      data_cat: 'commercial' 
-    },
-    'GOVERNMENT': { 
-      category: 'Government / Strategic Communication', 
-      data_cat: 'government' 
-    },
-    'TOURISM': { 
-      category: 'Tourism / Destination Marketing', 
-      data_cat: 'tourism' 
-    },
-    'CORPORATE': { 
-      category: 'Corporate Video', 
-      data_cat: 'corporate' 
-    },
-    'MUSIC VIDEO': { 
-      category: 'Music Video', 
-      data_cat: 'entertainment' 
+    'narrative': { 
+      category: 'Narrative Films', 
+      data_cat: 'narrative' 
     }
   };
 
@@ -167,6 +152,32 @@ export default function ProjectForm({ project, onSubmit, onCancel, existingProje
     if (credits.length > 1) {
       setCredits(credits.filter((_, i) => i !== index));
     }
+  };
+
+  // Chapter/Moments handlers
+  const handleChapterChange = (index: number, field: 'timestamp' | 'label' | 'endTime', value: string) => {
+    const newChapters = [...chapters];
+    if (field === 'endTime') {
+      newChapters[index].endTime = value;
+      newChapters[index].type = value ? 'range' : 'moment';
+    } else {
+      newChapters[index][field] = value;
+    }
+    setChapters(newChapters);
+  };
+
+  const addChapter = () => {
+    setChapters([...chapters, { timestamp: '', label: '', type: 'moment' }]);
+  };
+
+  const removeChapter = (index: number) => {
+    setChapters(chapters.filter((_, i) => i !== index));
+  };
+
+  const validateTimestamp = (timestamp: string): boolean => {
+    // Validates formats: 0:15, 1:02, 1:02:30
+    const timeRegex = /^(\d+:)?[0-5]?\d:[0-5]\d$/;
+    return timeRegex.test(timestamp);
   };
 
   const generateVideoUrl = (vimeoId: string) => {
@@ -293,12 +304,28 @@ export default function ProjectForm({ project, onSubmit, onCancel, existingProje
       // Filter out empty credits
       const validCredits = credits.filter(credit => credit.role.trim() && credit.name.trim());
 
+      // Filter out empty chapters and validate timestamps
+      const validChapters = chapters.filter(chapter => {
+        if (!chapter.timestamp.trim() || !chapter.label.trim()) return false;
+        if (!validateTimestamp(chapter.timestamp)) {
+          toast.error('Invalid Timestamp', {
+            description: `"${chapter.timestamp}" is not a valid timestamp. Use format: 0:15 or 1:02:30`
+          });
+          return false;
+        }
+        return true;
+      });
+
       const submitData = {
         ...formData,
         credits: validCredits,
+        chapters: validChapters.length > 0 ? validChapters : null,
         order_index: Number(formData.order_index),
         thumbnail_url: formData.thumbnail_url || null
       };
+
+      console.log('📤 Submitting project data:', submitData);
+      console.log('🎬 video_thumbnail_url in submitData:', submitData.video_thumbnail_url);
 
       await onSubmit(submitData);
       
@@ -317,6 +344,63 @@ export default function ProjectForm({ project, onSubmit, onCancel, existingProje
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Tab Navigation */}
+      <div className="border-b border-gray-200 dark:border-gray-700">
+        <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+          <button
+            type="button"
+            onClick={() => setActiveTab('basic')}
+            className={`whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors ${
+              activeTab === 'basic'
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+            }`}
+          >
+            📝 Basic Info
+            {(errors.title || errors.client || errors.classification) && (
+              <span className="ml-2 inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-500 rounded-full">!</span>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('media')}
+            className={`whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors ${
+              activeTab === 'media'
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+            }`}
+          >
+            🎬 Media & Thumbnails
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('credits')}
+            className={`whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors ${
+              activeTab === 'credits'
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+            }`}
+          >
+            👥 Credits
+            <span className="ml-2 text-xs text-gray-400">({credits.filter(c => c.role && c.name).length})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('chapters')}
+            className={`whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors ${
+              activeTab === 'chapters'
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+            }`}
+          >
+            ✂️ Video Moments
+            <span className="ml-2 text-xs text-gray-400">({chapters.length})</span>
+          </button>
+        </nav>
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === 'basic' && (
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         {/* Title */}
         <div className="md:col-span-2">
@@ -446,14 +530,9 @@ export default function ProjectForm({ project, onSubmit, onCancel, existingProje
             }`}
           >
             <option value="">Select Project Type</option>
-            <option value="TVC">TVC (Television Commercial)</option>
-            <option value="BRAND FILM">Brand Film</option>
-            <option value="DOCUMENTARY">Documentary</option>
-            <option value="COMMERCIAL">Commercial</option>
-            <option value="GOVERNMENT">Government / Strategic</option>
-            <option value="TOURISM">Tourism / Destination</option>
-            <option value="CORPORATE">Corporate Video</option>
-            <option value="MUSIC VIDEO">Music Video</option>
+            <option value="TVC">TVC / Brand Films</option>
+            <option value="narrative">Narrative Films</option>
+
           </select>
           {touched.classification && errors.classification && (
             <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.classification}</p>
@@ -599,9 +678,14 @@ export default function ProjectForm({ project, onSubmit, onCancel, existingProje
             Lower numbers appear first (0-9999). {existingProjects.length > 0 && `${existingProjects.filter(p => p.id !== project?.id).length} projects exist.`}
           </p>
         </div>
+      </div>
+      )}
 
+      {/* Media & Thumbnails Tab */}
+      {activeTab === 'media' && (
+      <div className="space-y-6">
         {/* Video Source Selection */}
-        <div className="md:col-span-2">
+        <div>
           <Label>Video Source</Label>
           <div className="flex gap-4 mb-4">
             <label className="flex items-center gap-2 cursor-pointer">
@@ -839,7 +923,11 @@ export default function ProjectForm({ project, onSubmit, onCancel, existingProje
           />
         </div>
       </div>
+      )}
 
+      {/* Credits Tab */}
+      {activeTab === 'credits' && (
+      <div className="space-y-6">
       {/* Credits Section */}
       <div>
         <div className="flex items-center justify-between mb-4">
@@ -923,9 +1011,223 @@ export default function ProjectForm({ project, onSubmit, onCancel, existingProje
           Add team members who worked on this project (optional).
         </p>
       </div>
+      </div>
+      )}
 
-      {/* Checkboxes */}
-      <div className="flex gap-6">
+      {/* Video Chapters Tab */}
+      {activeTab === 'chapters' && (
+      <div className="space-y-6">
+      {/* Video Chapters/Moments Section */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          {/* <div>
+            <Label>
+              Video Chapters <span className="text-gray-400 text-xs">(Optional)</span>
+            </Label>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Mark important moments in your video (e.g., 0:15 → Intro, 1:02 → Key scene)
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={addChapter}
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+          >
+            <PlusIcon className="w-4 h-4" />
+            Add Chapter
+          </button> */}
+        </div>
+
+        {/* Video Chapter Marker with FFmpeg Export */}
+        {formData.video_url && (
+          <VideoChapterMarker
+            videoUrl={formData.video_url}
+            currentThumbnailUrl={formData.video_thumbnail_url}
+            chapters={chapters}
+            onChaptersChange={setChapters}
+            projectId={project?.id}
+            onThumbnailClipUpdate={(url) => {
+              console.log('🎬 Thumbnail clip URL received:', url);
+              setFormData(prev => {
+                const updated = { ...prev, video_thumbnail_url: url };
+                console.log('📝 Form data updated:', updated);
+                return updated;
+              });
+              toast.success('Thumbnail clip saved!', {
+                description: 'Video thumbnail URL updated. Click "Update Project" to save.'
+              });
+            }}
+          />
+        )}
+        
+        {chapters.length > 0 && (
+          <div className="space-y-3">
+            {chapters.map((chapter, index) => {
+              const isComplete = chapter.timestamp.trim() && chapter.label.trim();
+              const isEmpty = !chapter.timestamp.trim() && !chapter.label.trim();
+              const isPartial = (chapter.timestamp.trim() && !chapter.label.trim()) || (!chapter.timestamp.trim() && chapter.label.trim());
+              const isValidTimestamp = chapter.timestamp.trim() ? validateTimestamp(chapter.timestamp) : true;
+              const isValidEndTime = chapter.endTime ? validateTimestamp(chapter.endTime) : true;
+              const isRange = chapter.type === 'range' || !!chapter.endTime;
+              
+              return (
+                <div key={index} className="flex gap-3 items-end">
+                  <div className={isRange ? "w-28" : "w-32"}>
+                    <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">
+                      {isRange ? 'Start' : 'Time'}
+                    </label>
+                    <input
+                      type="text"
+                      value={chapter.timestamp}
+                      onChange={(e) => {
+                        handleChapterChange(index, 'timestamp', e.target.value);
+                      }}
+                      placeholder="1:30"
+                      className={`h-11 w-full rounded-lg border px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 focus:outline-hidden focus:ring-3 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 ${
+                        !isValidTimestamp
+                          ? 'border-red-500 focus:border-red-500 focus:ring-red-500/10'
+                          : isPartial && !chapter.timestamp.trim()
+                          ? 'border-orange-500 focus:border-orange-500 focus:ring-orange-500/10'
+                          : 'border-gray-300 focus:border-brand-300 focus:ring-brand-500/10 dark:border-gray-700 dark:focus:border-brand-800'
+                      }`}
+                    />
+                    {!isValidTimestamp && chapter.timestamp.trim() && (
+                      <p className="mt-1 text-xs text-red-600 dark:text-red-400">Invalid</p>
+                    )}
+                  </div>
+                  
+                  {isRange && (
+                    <div className="w-28">
+                      <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">End</label>
+                      <input
+                        type="text"
+                        value={chapter.endTime || ''}
+                        onChange={(e) => {
+                          handleChapterChange(index, 'endTime', e.target.value);
+                        }}
+                        placeholder="2:00"
+                        className={`h-11 w-full rounded-lg border px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 focus:outline-hidden focus:ring-3 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 ${
+                          !isValidEndTime
+                            ? 'border-red-500 focus:border-red-500 focus:ring-red-500/10'
+                            : 'border-gray-300 focus:border-brand-300 focus:ring-brand-500/10 dark:border-gray-700 dark:focus:border-brand-800'
+                        }`}
+                      />
+                      {!isValidEndTime && chapter.endTime && (
+                        <p className="mt-1 text-xs text-red-600 dark:text-red-400">Invalid</p>
+                      )}
+                    </div>
+                  )}
+                  
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      value={chapter.label}
+                      onChange={(e) => {
+                        handleChapterChange(index, 'label', e.target.value);
+                      }}
+                      placeholder={isRange ? "Clip label (e.g., Action sequence)" : "Moment label (e.g., Intro)"}
+                      className={`h-11 w-full rounded-lg border px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 focus:outline-hidden focus:ring-3 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 ${
+                        isPartial && !chapter.label.trim()
+                          ? 'border-orange-500 focus:border-orange-500 focus:ring-orange-500/10'
+                          : 'border-gray-300 focus:border-brand-300 focus:ring-brand-500/10 dark:border-gray-700 dark:focus:border-brand-800'
+                      }`}
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {isComplete && isValidTimestamp && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const video = document.getElementById('chapter-video-preview') as HTMLVideoElement;
+                          if (video && chapter.timestamp) {
+                            const parts = chapter.timestamp.split(':').map(Number);
+                            let seconds = 0;
+                            if (parts.length === 2) seconds = parts[0] * 60 + parts[1];
+                            if (parts.length === 3) seconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
+                            video.currentTime = seconds;
+                            video.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            toast.success('Jumped to ' + (isRange ? 'range start' : 'moment'), {
+                              description: `Playing from ${chapter.timestamp}`
+                            });
+                          }
+                        }}
+                        className="text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300"
+                        title="Jump to this moment in video"
+                      >
+                        ▶️
+                      </button>
+                    )}
+                    {isComplete && isValidTimestamp && (
+                      <span className="text-green-600 dark:text-green-400 text-sm" title={isRange ? "Range/Clip" : "Moment"}>
+                        {isRange ? '📍' : '⭐'}
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => removeChapter(index)}
+                      className="inline-flex items-center justify-center w-11 h-11 text-white bg-red-600 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                    >
+                      <TrashBinIcon className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        
+        {chapters.length === 0 && (
+          <div className="text-center py-8 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+              No chapters added yet
+            </p>
+            <button
+              type="button"
+              onClick={addChapter}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300"
+            >
+              <PlusIcon className="w-4 h-4" />
+              Add your first chapter
+            </button>
+          </div>
+        )}
+        
+        {chapters.filter(c => c.timestamp.trim() && c.label.trim() && validateTimestamp(c.timestamp)).length > 0 && (
+          <div className="mt-3 p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+            <p className="text-xs font-medium text-purple-900 dark:text-purple-100 mb-2">
+              ⭐ Preview Chapters ({chapters.filter(c => c.timestamp.trim() && c.label.trim() && validateTimestamp(c.timestamp)).length})
+            </p>
+            <div className="space-y-1">
+              {chapters
+                .filter(c => c.timestamp.trim() && c.label.trim() && validateTimestamp(c.timestamp))
+                .sort((a, b) => {
+                  // Sort by timestamp
+                  const timeToSeconds = (time: string) => {
+                    const parts = time.split(':').map(Number);
+                    if (parts.length === 2) return parts[0] * 60 + parts[1];
+                    if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+                    return 0;
+                  };
+                  return timeToSeconds(a.timestamp) - timeToSeconds(b.timestamp);
+                })
+                .map((chapter, idx) => (
+                  <p key={idx} className="text-xs text-purple-700 dark:text-purple-300">
+                    {chapter.timestamp} → {chapter.label}
+                  </p>
+                ))}
+            </div>
+          </div>
+        )}
+        
+        <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+          Format: 0:15 (15 seconds), 1:02 (1 minute 2 seconds), or 1:02:30 (1 hour 2 minutes 30 seconds)
+        </p>
+      </div>
+      </div>
+      )}
+
+      {/* Checkboxes - Always visible */}
+      <div className="flex gap-6 pt-6 border-t border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-3">
           <Checkbox
             checked={formData.is_featured}
@@ -943,7 +1245,7 @@ export default function ProjectForm({ project, onSubmit, onCancel, existingProje
         </div>
       </div>
 
-      {/* Form Actions */}
+      {/* Form Actions - Always visible */}
       <div className="flex gap-4 pt-6 border-t border-gray-200 dark:border-gray-700">
         <button
           type="submit"

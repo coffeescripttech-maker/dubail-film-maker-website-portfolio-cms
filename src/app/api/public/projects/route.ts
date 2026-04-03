@@ -35,6 +35,7 @@ export async function GET(request: NextRequest) {
       classification: project.classification,
       vimeo_id: project.vimeo_id || '',
       video_url: project.video_url,
+      video_thumbnail_url: project.video_thumbnail_url || null,
       poster_image: project.poster_image || '',
       poster_image_srcset: project.poster_image_srcset || '',
       link: `works/project-detail#id=${project.id}`,

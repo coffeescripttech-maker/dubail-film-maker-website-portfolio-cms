@@ -62,19 +62,14 @@ export default function BulkImport({ onImportComplete, onCancel, existingProject
   };
 
   const mapClassification = (classification: string): { category: string; data_cat: string } => {
-    const upperClass = classification.toUpperCase();
+    const lowerClass = classification.toLowerCase();
     
     const mapping: Record<string, { category: string; data_cat: string }> = {
-      'TVC': { category: 'Television Commercial', data_cat: 'commercial' },
-      'BRAND FILM': { category: 'Brand Film / Corporate', data_cat: 'corporate' },
-      'DOCUMENTARY': { category: 'Documentary', data_cat: 'documentary' },
-      'COMMERCIAL': { category: 'Commercial', data_cat: 'commercial' },
-      'GOVERNMENT': { category: 'Government / Strategic Communication', data_cat: 'government' },
-      'TOURISM': { category: 'Tourism / Destination Marketing', data_cat: 'tourism' },
-      'CORPORATE': { category: 'Corporate Video', data_cat: 'corporate' }
+      'tvc': { category: 'Television Commercial', data_cat: 'TVC' },
+      'narrative': { category: 'Narrative Films', data_cat: 'narrative' }
     };
 
-    return mapping[upperClass] || { category: 'Commercial', data_cat: 'commercial' };
+    return mapping[lowerClass] || { category: 'Television Commercial', data_cat: 'TVC' };
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {

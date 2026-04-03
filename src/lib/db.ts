@@ -26,9 +26,11 @@ export interface Project {
   classification: string | null;
   vimeo_id: string | null;
   video_url: string | null;
+  video_thumbnail_url?: string | null;
   poster_image: string | null;
   poster_image_srcset: string | null;
   credits: Credit[];
+  chapters?: VideoChapter[] | null;
   order_index: number;
   is_featured: boolean;
   is_published: boolean;
@@ -44,6 +46,13 @@ export interface Project {
 export interface Credit {
   role: string;
   name: string;
+}
+
+export interface VideoChapter {
+  timestamp: string; // Format: "0:15" or "1:02:30"
+  label: string;     // Description: "Intro", "Important scene", etc.
+  endTime?: string;  // Optional: For time ranges/clips "2:00"
+  type?: 'moment' | 'range'; // Type of chapter
 }
 
 export interface AboutContent {

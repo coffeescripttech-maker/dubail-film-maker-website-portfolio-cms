@@ -54,13 +54,18 @@ export async function PUT(
       classification,
       vimeo_id,
       video_url,
+      video_thumbnail_url,
       poster_image,
       poster_image_srcset,
       credits,
+      chapters,
       order_index,
       is_featured,
       is_published
     } = body;
+
+    console.log('📝 PUT /api/projects/[id] - Updating project:', id);
+    console.log('🎬 video_thumbnail_url from body:', video_thumbnail_url);
 
     // Validation
     if (title && !title.trim()) {
@@ -78,13 +83,17 @@ export async function PUT(
       classification,
       vimeo_id,
       video_url,
+      video_thumbnail_url,
       poster_image,
       poster_image_srcset,
       credits,
+      chapters,
       order_index,
       is_featured,
       is_published
     });
+
+    console.log('✅ Project updated, video_thumbnail_url:', updatedProject?.video_thumbnail_url);
 
     if (!updatedProject) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });

@@ -61,6 +61,7 @@ export async function getAllProjects(): Promise<Project[]> {
       return result.results.map((row: any) => ({
         ...row,
         credits: row.credits ? JSON.parse(row.credits) : [],
+        chapters: row.chapters ? JSON.parse(row.chapters) : null,
         is_featured: Boolean(row.is_featured),
         is_published: Boolean(row.is_published)
       }));
@@ -85,6 +86,7 @@ export async function getProjectById(id: string): Promise<Project | null> {
       return {
         ...row,
         credits: row.credits ? JSON.parse(row.credits) : [],
+        chapters: row.chapters ? JSON.parse(row.chapters) : null,
         is_featured: Boolean(row.is_featured),
         is_published: Boolean(row.is_published)
       };
@@ -100,14 +102,15 @@ export async function getProjectById(id: string): Promise<Project | null> {
 export async function createProject(project: Omit<Project, 'id' | 'created_at' | 'updated_at'>): Promise<Project> {
   const id = crypto.randomUUID();
   const creditsJson = JSON.stringify(project.credits || []);
+  const chaptersJson = project.chapters ? JSON.stringify(project.chapters) : null;
   
   try {
     await queryD1(
       `INSERT INTO projects (
         id, title, client, client_short, category, data_cat, languages, classification,
-        vimeo_id, video_url, poster_image, poster_image_srcset, credits,
+        vimeo_id, video_url, poster_image, poster_image_srcset, credits, chapters,
         order_index, is_featured, is_published
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         project.title,
@@ -122,6 +125,7 @@ export async function createProject(project: Omit<Project, 'id' | 'created_at' |
         project.poster_image,
         project.poster_image_srcset,
         creditsJson,
+        chaptersJson,
         project.order_index,
         project.is_featured ? 1 : 0,
         project.is_published ? 1 : 0
@@ -188,6 +192,10 @@ export async function updateProject(id: string, updates: Partial<Project>): Prom
       fields.push('video_url = ?');
       values.push(updates.video_url);
     }
+    if (updates.video_thumbnail_url !== undefined) {
+      fields.push('video_thumbnail_url = ?');
+      values.push(updates.video_thumbnail_url);
+    }
     if (updates.poster_image !== undefined) {
       fields.push('poster_image = ?');
       values.push(updates.poster_image);
@@ -199,6 +207,10 @@ export async function updateProject(id: string, updates: Partial<Project>): Prom
     if (updates.credits !== undefined) {
       fields.push('credits = ?');
       values.push(JSON.stringify(updates.credits));
+    }
+    if (updates.chapters !== undefined) {
+      fields.push('chapters = ?');
+      values.push(updates.chapters ? JSON.stringify(updates.chapters) : null);
     }
     if (updates.order_index !== undefined) {
       fields.push('order_index = ?');
@@ -276,6 +288,7 @@ export async function batchUpdateProjectOrder(updates: Array<{ projectId: string
       return updatedResult.results.map((row: any) => ({
         ...row,
         credits: row.credits ? JSON.parse(row.credits) : [],
+        chapters: row.chapters ? JSON.parse(row.chapters) : null,
         is_featured: Boolean(row.is_featured),
         is_published: Boolean(row.is_published)
       }));
