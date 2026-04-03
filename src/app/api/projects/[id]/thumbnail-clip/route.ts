@@ -6,9 +6,10 @@ export const runtime = 'edge';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await context.params;
     const formData = await request.formData();
     const videoBlob = formData.get('video') as Blob;
     
@@ -26,12 +27,12 @@ export async function POST(
     // Upload to R2
     const result = await uploadFile(
       buffer,
-      `thumbnail-clip-${params.id}-${Date.now()}.mp4`,
+      `thumbnail-clip-${id}-${Date.now()}.mp4`,
       {
         folder: 'projects/thumbnail-clips',
         contentType: 'video/mp4',
         metadata: {
-          projectId: params.id,
+          projectId: id,
           type: 'thumbnail-clip'
         }
       }
@@ -39,12 +40,12 @@ export async function POST(
 
     // Update database
     console.log('💾 ========== DATABASE UPDATE ==========');
-    console.log('💾 Project ID:', params.id);
+    console.log('💾 Project ID:', id);
     console.log('💾 Thumbnail URL:', result.publicUrl);
     
     const updateResult = await queryD1(
       'UPDATE projects SET video_thumbnail_url = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-      [result.publicUrl, params.id]
+      [result.publicUrl, id]
     );
     
     console.log('✅ Database update result:', updateResult);
@@ -53,7 +54,7 @@ export async function POST(
     console.log('🔍 Verifying database update...');
     const verifyResult = await queryD1(
       'SELECT id, title, video_thumbnail_url FROM projects WHERE id = ?',
-      [params.id]
+      [id]
     );
     console.log('🔍 Verification query result:', verifyResult);
     
