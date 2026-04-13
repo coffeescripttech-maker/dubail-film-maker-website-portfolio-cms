@@ -10,14 +10,21 @@ const nextConfig: NextConfig = {
     return config;
   },
     
-    turbopack: {
-      rules: {
-        '*.svg': {
-          loaders: ['@svgr/webpack'],
-          as: '*.js',
-        },
+  turbopack: {
+    rules: {
+      '*.svg': {
+        loaders: ['@svgr/webpack'],
+        as: '*.js',
       },
     },
+  },
+  
+  // Increase body size limit for video uploads
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '100mb',
+    },
+  },
   
 };
 

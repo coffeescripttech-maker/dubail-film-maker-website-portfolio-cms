@@ -30,6 +30,11 @@ export default function VideoChapterMarker({ videoUrl, currentThumbnailUrl, chap
   const [isDragging, setIsDragging] = useState<'start' | 'end' | 'range' | null>(null);
   const [dragStartX, setDragStartX] = useState(0);
   const [dragStartValues, setDragStartValues] = useState({ start: 0, end: 0 });
+  
+  // Hover preview state (YouTube-style)
+  const [hoverPreview, setHoverPreview] = useState<{ time: number; x: number } | null>(null);
+  const hoverCanvasRef = useRef<HTMLCanvasElement>(null);
+  const previewVideoRef = useRef<HTMLVideoElement>(null);
 
   // Video event handlers
   const handleTimeUpdate = () => {
@@ -113,6 +118,49 @@ export default function VideoChapterMarker({ videoUrl, currentThumbnailUrl, chap
     if (videoRef.current) {
       videoRef.current.currentTime = clickedTime;
     }
+  };
+  
+  // Hover preview handlers (YouTube-style)
+  const handleTimelineHover = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isDragging || !timelineRef.current || !videoRef.current) return;
+    
+    const rect = timelineRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const time = getTimeFromPosition(e.clientX);
+    
+    setHoverPreview({ time, x });
+    
+    // Capture frame at hover time
+    captureFrameAtTime(time);
+  };
+  
+  const handleTimelineLeave = () => {
+    setHoverPreview(null);
+  };
+  
+  const captureFrameAtTime = (time: number) => {
+    if (!previewVideoRef.current || !hoverCanvasRef.current) return;
+    
+    const previewVideo = previewVideoRef.current;
+    const canvas = hoverCanvasRef.current;
+    const ctx = canvas.getContext('2d');
+    
+    if (!ctx || !previewVideo.videoWidth) return;
+    
+    // Set canvas size to match video aspect ratio
+    const aspectRatio = previewVideo.videoWidth / previewVideo.videoHeight;
+    canvas.width = 160; // Fixed width for preview
+    canvas.height = 160 / aspectRatio;
+    
+    // Seek preview video to hover time
+    previewVideo.currentTime = time;
+    
+    // Wait for seek to complete, then capture frame
+    const captureFrame = () => {
+      ctx.drawImage(previewVideo, 0, 0, canvas.width, canvas.height);
+    };
+    
+    previewVideo.addEventListener('seeked', captureFrame, { once: true });
   };
 
   // Draggable range handlers
@@ -293,6 +341,16 @@ export default function VideoChapterMarker({ videoUrl, currentThumbnailUrl, chap
     console.log('🆔 Project ID:', projectId);
     console.log('🎥 Video URL:', videoUrl);
     
+    // Check for AV1 videos (not supported by FFmpeg.wasm)
+    if (videoUrl.toLowerCase().includes('.webm') || videoUrl.toLowerCase().includes('av1')) {
+      console.error('❌ AV1 video detected - not supported by FFmpeg.wasm');
+      toast.error("AV1 videos not supported", {
+        description: "FFmpeg.wasm cannot process AV1 videos. Please convert your video to H.264/MP4 format first, or use the 'Upload Custom Thumbnail Video' option above with a pre-converted file.",
+        duration: 8000
+      });
+      return;
+    }
+    
     if (!ffmpegLoaded || !ffmpegRef.current) {
       console.error('❌ FFmpeg not loaded');
       toast.error("FFmpeg not loaded");
@@ -342,14 +400,32 @@ export default function VideoChapterMarker({ videoUrl, currentThumbnailUrl, chap
 
       toast.loading(`✂️ Trimming clip (${clipDuration}s)...`, { id: "upload-thumbnail" });
 
+      // Check if video is AV1 (which FFmpeg.wasm has trouble with)
+      // AV1 videos need special handling - we'll decode and re-encode
+      console.log('🔍 Checking video codec...');
+      
+      // For AV1 videos, we need to fully decode and re-encode
+      // This is slower but ensures compatibility
       await ffmpeg.exec([
+        "-ss", startSeconds.toString(),  // Seek BEFORE input for faster processing
         "-i", "input.mp4",
-        "-ss", startSeconds.toString(),
         "-t", clipDuration.toString(),
-        "-c", "copy",
+        "-c:v", "libx264",              // Re-encode video with H.264 (universal compatibility)
+        "-preset", "ultrafast",         // Fastest encoding (for AV1 sources)
+        "-crf", "23",                   // Quality (lower = better, 23 is good balance)
+        "-pix_fmt", "yuv420p",          // Pixel format for web compatibility
+        "-g", "30",                     // Keyframe every 1 second at 30fps
+        "-keyint_min", "30",            // Minimum keyframe interval
+        "-sc_threshold", "0",           // Disable scene change detection
+        "-c:a", "aac",                  // Re-encode audio with AAC
+        "-b:a", "128k",                 // Audio bitrate
+        "-ar", "48000",                 // Audio sample rate
+        "-ac", "2",                     // Stereo audio
+        "-movflags", "+faststart",      // Enable fast start for web playback
+        "-y",                           // Overwrite output file
         "output.mp4"
       ]);
-      console.log('✅ Clip trimmed successfully');
+      console.log('✅ Clip trimmed and re-encoded with proper keyframes (AV1 → H.264)');
 
       const data = await ffmpeg.readFile("output.mp4");
       const blob = new Blob([new Uint8Array(data as unknown as ArrayBuffer)], { type: "video/mp4" });
@@ -589,6 +665,31 @@ export default function VideoChapterMarker({ videoUrl, currentThumbnailUrl, chap
         </div>
       )}
 
+      {/* AV1 Video Warning */}
+      {videoUrl && (videoUrl.toLowerCase().includes('.webm') || videoUrl.toLowerCase().includes('av1')) && (
+        <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border-2 border-red-300 dark:border-red-700">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 text-2xl">⚠️</div>
+            <div className="flex-1">
+              <h4 className="text-sm font-semibold text-red-900 dark:text-red-100 mb-2">
+                AV1 Video Detected - Timeline Generation Not Supported
+              </h4>
+              <p className="text-xs text-red-800 dark:text-red-200 mb-2">
+                Your video appears to use the AV1 codec (.webm format). FFmpeg.wasm cannot process AV1 videos in the browser.
+              </p>
+              <div className="text-xs text-red-800 dark:text-red-200 space-y-1">
+                <p className="font-semibold">Solutions:</p>
+                <ul className="list-disc list-inside space-y-1 ml-2">
+                  <li>Use the "Upload Custom Thumbnail Video" option above with a pre-converted H.264/MP4 file</li>
+                  <li>Convert your video to H.264/MP4 format using a tool like HandBrake or FFmpeg desktop</li>
+                  <li>Re-upload your project video in H.264/MP4 format</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {!projectId && videoUrl && (
         <div className="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
           <p className="text-sm text-orange-800 dark:text-orange-200">
@@ -658,6 +759,17 @@ export default function VideoChapterMarker({ videoUrl, currentThumbnailUrl, chap
                 <source src={videoUrl} type="video/mp4" />
                 Your browser does not support the video tag.
               </video>
+              
+              {/* Hidden preview video for hover thumbnails */}
+              <video
+                ref={previewVideoRef}
+                className="hidden"
+                muted
+                playsInline
+                preload="metadata"
+              >
+                <source src={videoUrl} type="video/mp4" />
+              </video>
             </div>
           )}
         </div>
@@ -701,8 +813,10 @@ export default function VideoChapterMarker({ videoUrl, currentThumbnailUrl, chap
         {/* Interactive Timeline */}
         <div 
           ref={timelineRef}
-          className="relative h-20 bg-gradient-to-b from-gray-800 to-gray-900 rounded-lg cursor-pointer overflow-hidden border border-gray-700"
+          className="relative h-20 bg-gradient-to-b from-gray-800 to-gray-900 rounded-lg cursor-pointer overflow-visible border border-gray-700"
           onClick={handleTimelineClick}
+          onMouseMove={handleTimelineHover}
+          onMouseLeave={handleTimelineLeave}
         >
           {duration === 0 && (
             <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-400">
@@ -712,6 +826,32 @@ export default function VideoChapterMarker({ videoUrl, currentThumbnailUrl, chap
           
           {duration > 0 && (
             <>
+          {/* Hover Preview (YouTube-style) */}
+          {hoverPreview && (
+            <div 
+              className="absolute bottom-full mb-2 pointer-events-none z-50"
+              style={{ 
+                left: `${hoverPreview.x}px`,
+                transform: 'translateX(-50%)'
+              }}
+            >
+              <div className="bg-gray-900 rounded-lg shadow-2xl border-2 border-gray-700 overflow-hidden">
+                {/* Preview Canvas */}
+                <canvas 
+                  ref={hoverCanvasRef}
+                  className="block"
+                  style={{ maxWidth: '160px', height: 'auto' }}
+                />
+                {/* Time Label */}
+                <div className="px-2 py-1 bg-black/80 text-white text-xs font-mono text-center">
+                  {formatTimeSimple(hoverPreview.time)}
+                </div>
+              </div>
+              {/* Arrow pointing down */}
+              <div className="absolute left-1/2 -translate-x-1/2 -bottom-2 w-0 h-0 border-l-8 border-r-8 border-t-8 border-transparent border-t-gray-700" />
+            </div>
+          )}
+          
           {/* Existing chapter markers (saved ranges) */}
           {chapters.map((chapter, idx) => {
             const parts = chapter.timestamp.split(':').map(Number);
@@ -790,7 +930,7 @@ export default function VideoChapterMarker({ videoUrl, currentThumbnailUrl, chap
 
         {/* Timeline Instructions */}
         <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-          Click timeline to seek • Drag blue handles to adjust range • Drag blue bar to move range
+          Hover timeline to preview frames • Click to seek • Drag blue handles to adjust range
         </p>
       </div>
 
@@ -912,9 +1052,13 @@ export default function VideoChapterMarker({ videoUrl, currentThumbnailUrl, chap
                         <button
                           type="button"
                           onClick={() => uploadAsThumbnail(chapter)}
-                          disabled={!ffmpegLoaded || isExporting}
+                          disabled={!ffmpegLoaded || isExporting || videoUrl.toLowerCase().includes('.webm') || videoUrl.toLowerCase().includes('av1')}
                           className="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                          title="Upload as video thumbnail clip"
+                          title={
+                            videoUrl.toLowerCase().includes('.webm') || videoUrl.toLowerCase().includes('av1')
+                              ? "AV1 videos not supported - use 'Upload Custom Thumbnail Video' instead"
+                              : "Upload as video thumbnail clip"
+                          }
                         >
                           {isExporting ? '⏳' : '☁️'} Set as Thumbnail
                         </button>

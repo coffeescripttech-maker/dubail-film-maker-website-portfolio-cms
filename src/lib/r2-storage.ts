@@ -57,6 +57,11 @@ export async function uploadFile(
       Body: file,
       ContentType: contentType,
       Metadata: options.metadata,
+      CacheControl: 'public, max-age=31536000', // Cache for 1 year
+      // Enable range requests for video streaming
+      ...(contentType.startsWith('video/') && {
+        ContentDisposition: 'inline',
+      }),
     });
 
     await r2Client.send(command);

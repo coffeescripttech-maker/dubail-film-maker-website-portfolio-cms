@@ -24,26 +24,34 @@ export async function GET(request: NextRequest) {
     projects = projects.filter(p => p.is_published === true);
     
     // Transform data to match portfolio website format
-    const transformedProjects = projects.map(project => ({
-      id: project.id,
-      title: project.title,
-      client: project.client,
-      client_short: project.client_short,
-      category: project.category,
-      data_cat: project.data_cat,
-      languages: project.languages,
-      classification: project.classification,
-      vimeo_id: project.vimeo_id || '',
-      video_url: project.video_url,
-      video_thumbnail_url: project.video_thumbnail_url || null,
-      poster_image: project.poster_image || '',
-      poster_image_srcset: project.poster_image_srcset || '',
-      link: `works/project-detail#id=${project.id}`,
-      credits: project.credits || [],
-      order_index: project.order_index,
-      is_featured: project.is_featured,
-      is_published: project.is_published
-    }));
+    const transformedProjects = projects.map((project) => {
+      console.log({project});
+      
+      return {
+        id: project.id,
+        title: project.title,
+        client: project.client,
+        client_short: project.client_short,
+        category: project.category,
+        data_cat: project.data_cat,
+        languages: project.languages,
+        classification: project.classification,
+        vimeo_id: project.vimeo_id || '',
+        // For homepage/works page: Use thumbnail clip (fast loading)
+        video_url: project.video_thumbnail_url || project.video_url,
+        // For project detail page: Always use full video
+        video_url_full: project.video_url,
+        // Thumbnail clip URL (if available)
+        video_thumbnail_url: project.video_thumbnail_url || null,
+        poster_image: project.poster_image || '',
+        poster_image_srcset: project.poster_image_srcset || '',
+        link: `works/project-detail#id=${project.id}`,
+        credits: project.credits || [],
+        order_index: project.order_index,
+        is_featured: project.is_featured,
+        is_published: project.is_published
+      };
+    });
     
     // Sort by order_index
     transformedProjects.sort((a, b) => a.order_index - b.order_index);

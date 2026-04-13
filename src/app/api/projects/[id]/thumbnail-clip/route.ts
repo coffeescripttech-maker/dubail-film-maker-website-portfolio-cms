@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { uploadFile } from '@/lib/r2-storage';
 import { queryD1 } from '@/lib/d1-client';
 
-export const runtime = 'edge';
+// Use Node.js runtime for larger file uploads (Edge has 4MB limit)
+export const runtime = 'nodejs';
+
+// Increase max duration for processing large files
+export const maxDuration = 60; // 60 seconds
 
 export async function POST(
   request: NextRequest,
