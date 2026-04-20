@@ -4,16 +4,17 @@
 
 import { Project } from './db';
 
-const CLOUDFLARE_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID;
+const CLOUDFLARE_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID || '4e369248fbb93ecfab45e53137a9980d';
 const CLOUDFLARE_DATABASE_ID = process.env.CLOUDFLARE_DATABASE_ID || '908f42f0-ad4d-4ce0-b3a2-9bb13cf54795';
-const CLOUDFLARE_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
+const CLOUDFLARE_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN || 'NXu3f4s9376pvFJFSUhE8AZ2UtcyFpcEYVZG2NmF';
 
 // Log environment variable status (only first 10 chars of sensitive data for security)
 console.log('🔧 D1 Client Configuration:', {
   accountId: CLOUDFLARE_ACCOUNT_ID ? `${CLOUDFLARE_ACCOUNT_ID.substring(0, 10)}...` : '❌ NOT SET',
   databaseId: CLOUDFLARE_DATABASE_ID ? `${CLOUDFLARE_DATABASE_ID.substring(0, 10)}...` : '❌ NOT SET',
   apiToken: CLOUDFLARE_API_TOKEN ? `${CLOUDFLARE_API_TOKEN.substring(0, 10)}...` : '❌ NOT SET',
-  allVariablesSet: !!(CLOUDFLARE_ACCOUNT_ID && CLOUDFLARE_API_TOKEN && CLOUDFLARE_DATABASE_ID)
+  allVariablesSet: !!(CLOUDFLARE_ACCOUNT_ID && CLOUDFLARE_API_TOKEN && CLOUDFLARE_DATABASE_ID),
+  usingFallback: !process.env.CLOUDFLARE_ACCOUNT_ID || !process.env.CLOUDFLARE_API_TOKEN
 });
 
 // D1 HTTP API client
