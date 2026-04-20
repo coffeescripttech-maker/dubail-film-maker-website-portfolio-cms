@@ -1,5 +1,6 @@
 // Cloudflare D1 Database Client for API Routes
 // This connects to the remote D1 database via HTTP API
+// Updated: Environment variables should be loaded from Vercel
 
 import { Project } from './db';
 
@@ -7,9 +8,22 @@ const CLOUDFLARE_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID;
 const CLOUDFLARE_DATABASE_ID = process.env.CLOUDFLARE_DATABASE_ID || '908f42f0-ad4d-4ce0-b3a2-9bb13cf54795';
 const CLOUDFLARE_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
 
+// Log environment variable status (only first 10 chars of sensitive data for security)
+console.log('🔧 D1 Client Configuration:', {
+  accountId: CLOUDFLARE_ACCOUNT_ID ? `${CLOUDFLARE_ACCOUNT_ID.substring(0, 10)}...` : '❌ NOT SET',
+  databaseId: CLOUDFLARE_DATABASE_ID ? `${CLOUDFLARE_DATABASE_ID.substring(0, 10)}...` : '❌ NOT SET',
+  apiToken: CLOUDFLARE_API_TOKEN ? `${CLOUDFLARE_API_TOKEN.substring(0, 10)}...` : '❌ NOT SET',
+  allVariablesSet: !!(CLOUDFLARE_ACCOUNT_ID && CLOUDFLARE_API_TOKEN && CLOUDFLARE_DATABASE_ID)
+});
+
 // D1 HTTP API client
 export async function queryD1(sql: string, params: any[] = []): Promise<any> {
   if (!CLOUDFLARE_ACCOUNT_ID || !CLOUDFLARE_API_TOKEN) {
+    console.error('❌ Cloudflare credentials missing:', {
+      accountId: !!CLOUDFLARE_ACCOUNT_ID,
+      apiToken: !!CLOUDFLARE_API_TOKEN,
+      databaseId: !!CLOUDFLARE_DATABASE_ID
+    });
     throw new Error('Cloudflare credentials not configured. Please set CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN in .env.local');
   }
 
