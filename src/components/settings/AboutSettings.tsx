@@ -81,10 +81,10 @@ export default function AboutSettings() {
       return;
     }
 
-    // Validate file size (500MB limit)
-    const maxSize = 500 * 1024 * 1024; // 500MB
+    // Validate file size (800MB limit)
+    const maxSize = 800 * 1024 * 1024; // 800MB
     if (file.size > maxSize) {
-      toast.error('Video size must be less than 500MB');
+      toast.error('Video size must be less than 800MB');
       return;
     }
 
@@ -409,7 +409,7 @@ export default function AboutSettings() {
                   className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900/20 dark:file:text-blue-400 dark:hover:file:bg-blue-900/30 disabled:opacity-50"
                 />
                 <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                  Supported formats: MP4, WebM, MOV. Max size: 500MB
+                  Supported formats: MP4, WebM, MOV. Max size: 800MB
                 </p>
                 
                 {uploadingVideo && (

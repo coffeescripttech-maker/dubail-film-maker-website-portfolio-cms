@@ -730,6 +730,7 @@ export default function ProjectForm({ project, onSubmit, onCancel, existingProje
               <FileUpload
                 type="video"
                 folder="projects/videos"
+                maxSizeMB={800}
                 currentFile={formData.video_url}
                 onUploadComplete={(result) => {
                   handleInputChange('video_url', result.publicUrl);
@@ -762,7 +763,7 @@ export default function ProjectForm({ project, onSubmit, onCancel, existingProje
               </p>
             )}
             <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-              Supported formats: MP4, WebM, MOV. Max size: 500MB. Videos will be stored in R2.
+              Supported formats: MP4, WebM, MOV. Max size: 800MB. Videos will be stored in R2.
             </p>
           </div>
         )}
