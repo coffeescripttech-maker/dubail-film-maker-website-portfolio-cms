@@ -226,4 +226,4 @@ export function validateFileSize(fileSize: number, maxSizeMB: number): boolean {
 export const IMAGE_TYPES = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
 export const VIDEO_TYPES = ['mp4', 'webm', 'avi', 'mov'];
 export const MAX_IMAGE_SIZE_MB = 10;
-export const MAX_VIDEO_SIZE_MB = 500; // Increased to 500MB for larger video files
+export const MAX_VIDEO_SIZE_MB = 800; // Increased to 800MB for larger video files
