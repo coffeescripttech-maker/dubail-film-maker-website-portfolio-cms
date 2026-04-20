@@ -75,17 +75,48 @@ export default function VideoChapterMarker({ videoUrl, currentThumbnailUrl, chap
         console.log(message);
       });
 
-      const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd";
-      await ffmpeg.load({
-        coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
-        wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
-      });
+      // Try multiple CDNs in case one fails
+      const cdnOptions = [
+        {
+          name: "jsDelivr",
+          baseURL: "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd"
+        },
+        {
+          name: "unpkg",
+          baseURL: "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd"
+        }
+      ];
+
+      let loaded = false;
+      let lastError: Error | null = null;
+
+      for (const cdn of cdnOptions) {
+        try {
+          console.log(`⏳ Trying to load FFmpeg from ${cdn.name}...`);
+          await ffmpeg.load({
+            coreURL: await toBlobURL(`${cdn.baseURL}/ffmpeg-core.js`, "text/javascript"),
+            wasmURL: await toBlobURL(`${cdn.baseURL}/ffmpeg-core.wasm`, "application/wasm"),
+          });
+          console.log(`✅ FFmpeg loaded successfully from ${cdn.name}`);
+          loaded = true;
+          break;
+        } catch (error) {
+          console.warn(`❌ Failed to load from ${cdn.name}:`, error);
+          lastError = error as Error;
+          // Continue to next CDN
+        }
+      }
+
+      if (!loaded) {
+        throw lastError || new Error("Failed to load FFmpeg from all CDNs");
+      }
 
       setFfmpegLoaded(true);
-      console.log("✅ FFmpeg loaded successfully");
     } catch (error) {
       console.error("Failed to load FFmpeg:", error);
-      toast.error("FFmpeg failed to load");
+      toast.error("FFmpeg failed to load", {
+        description: "Please check your internet connection and try again"
+      });
     }
   };
 
@@ -223,10 +254,13 @@ export default function VideoChapterMarker({ videoUrl, currentThumbnailUrl, chap
     const startTimestamp = formatTimeSimple(selectedRange.start);
     const endTimestamp = formatTimeSimple(selectedRange.end);
     
+    // Generate default label - count all chapters regardless of type
+    const defaultLabel = `moment ${chapters.length + 1}`;
+    
     onChaptersChange([...chapters, { 
       timestamp: startTimestamp, 
       endTime: endTimestamp,
-      label: '',
+      label: defaultLabel,
       type: 'range'
     }]);
     
@@ -237,7 +271,11 @@ export default function VideoChapterMarker({ videoUrl, currentThumbnailUrl, chap
 
   const markCurrentMoment = () => {
     const timestamp = formatTimeSimple(currentTime);
-    onChaptersChange([...chapters, { timestamp, label: '', type: 'moment' }]);
+    
+    // Generate default label - count all chapters regardless of type
+    const defaultLabel = `moment ${chapters.length + 1}`;
+    
+    onChaptersChange([...chapters, { timestamp, label: defaultLabel, type: 'moment' }]);
     toast.success('Moment Marked!', {
       description: `Timestamp ${timestamp} captured.`
     });
@@ -341,6 +379,22 @@ export default function VideoChapterMarker({ videoUrl, currentThumbnailUrl, chap
     console.log('🆔 Project ID:', projectId);
     console.log('🎥 Video URL:', videoUrl);
     
+    // Check if thumbnail already exists and confirm replacement
+    if (currentThumbnailUrl) {
+      const confirmed = window.confirm(
+        "A thumbnail clip already exists for this project.\n\n" +
+        "Clicking OK will replace the existing thumbnail with a new one.\n\n" +
+        "Do you want to continue?"
+      );
+      
+      if (!confirmed) {
+        console.log('❌ User cancelled thumbnail replacement');
+        return;
+      }
+      
+      console.log('✅ User confirmed thumbnail replacement');
+    }
+    
     // Check for AV1 videos (not supported by FFmpeg.wasm)
     if (videoUrl.toLowerCase().includes('.webm') || videoUrl.toLowerCase().includes('av1')) {
       console.error('❌ AV1 video detected - not supported by FFmpeg.wasm');
@@ -431,30 +485,70 @@ export default function VideoChapterMarker({ videoUrl, currentThumbnailUrl, chap
       const blob = new Blob([new Uint8Array(data as unknown as ArrayBuffer)], { type: "video/mp4" });
       console.log('✅ Clip blob created, size:', blob.size, 'bytes');
 
-      // Upload to R2
-      console.log('☁️ Step 3: Uploading to R2 storage...');
-      toast.loading("☁️ Uploading to storage...", { id: "upload-thumbnail" });
-      const formData = new FormData();
-      formData.append('video', blob, 'thumbnail-clip.mp4');
-
+      // Upload to R2 using presigned URL (bypasses Vercel body size limit)
+      console.log('☁️ Step 3: Getting presigned upload URL...');
+      toast.loading("☁️ Preparing upload...", { id: "upload-thumbnail" });
+      
       const apiUrl = `/api/projects/${projectId}/thumbnail-clip`;
       console.log('📡 API URL:', apiUrl);
 
-      const response = await fetch(apiUrl, {
+      // Step 3a: Get presigned URL
+      const urlResponse = await fetch(apiUrl, {
         method: 'POST',
-        body: formData
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'get-upload-url' })
       });
 
-      console.log('📡 Response status:', response.status, response.statusText);
-      const result = await response.json();
-      console.log('📡 Response data:', result);
-
-      if (!response.ok) {
-        console.error('❌ API error:', result);
-        throw new Error(result.error || 'Upload failed');
+      if (!urlResponse.ok) {
+        const error = await urlResponse.json();
+        console.error('❌ Failed to get upload URL:', error);
+        throw new Error(error.error || 'Failed to get upload URL');
       }
 
-      console.log('✅ Upload successful!');
+      const { presignedUrl, publicUrl } = await urlResponse.json();
+      console.log('✅ Got presigned URL');
+      console.log('🔗 Public URL will be:', publicUrl);
+
+      // Step 3b: Upload directly to R2
+      console.log('☁️ Uploading directly to R2...');
+      toast.loading("☁️ Uploading to storage...", { id: "upload-thumbnail" });
+      
+      const uploadResponse = await fetch(presignedUrl, {
+        method: 'PUT',
+        body: blob,
+        headers: {
+          'Content-Type': 'video/mp4'
+        }
+      });
+
+      if (!uploadResponse.ok) {
+        console.error('❌ R2 upload failed:', uploadResponse.status, uploadResponse.statusText);
+        throw new Error('Failed to upload to storage');
+      }
+
+      console.log('✅ Upload to R2 successful!');
+
+      // Step 3c: Confirm upload and update database
+      console.log('💾 Confirming upload and updating database...');
+      toast.loading("💾 Updating database...", { id: "upload-thumbnail" });
+      
+      const confirmResponse = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          action: 'confirm-upload',
+          publicUrl 
+        })
+      });
+
+      if (!confirmResponse.ok) {
+        const error = await confirmResponse.json();
+        console.error('❌ Failed to confirm upload:', error);
+        throw new Error(error.error || 'Failed to update database');
+      }
+
+      const result = await confirmResponse.json();
+      console.log('✅ Database updated successfully!');
       console.log('🔗 Thumbnail URL:', result.url);
 
       // Cleanup
@@ -501,6 +595,24 @@ export default function VideoChapterMarker({ videoUrl, currentThumbnailUrl, chap
       return;
     }
 
+    // Check if thumbnail already exists and confirm replacement
+    if (currentThumbnailUrl) {
+      const confirmed = window.confirm(
+        "A thumbnail clip already exists for this project.\n\n" +
+        "Uploading a new file will replace the existing thumbnail.\n\n" +
+        "Do you want to continue?"
+      );
+      
+      if (!confirmed) {
+        console.log('❌ User cancelled custom thumbnail upload');
+        // Reset file input
+        event.target.value = '';
+        return;
+      }
+      
+      console.log('✅ User confirmed custom thumbnail replacement');
+    }
+
     // Validate file type
     if (!file.type.startsWith('video/')) {
       toast.error("Invalid file type", {
@@ -524,19 +636,57 @@ export default function VideoChapterMarker({ videoUrl, currentThumbnailUrl, chap
       console.log('📤 ========== CUSTOM VIDEO UPLOAD ==========');
       console.log('📁 File:', file.name, 'Size:', file.size, 'bytes');
       
-      toast.loading("☁️ Uploading custom thumbnail...", { id: "custom-upload" });
+      toast.loading("☁️ Preparing upload...", { id: "custom-upload" });
 
-      const formData = new FormData();
-      formData.append('video', file);
-
-      const response = await fetch(`/api/projects/${projectId}/thumbnail-clip`, {
+      // Step 1: Get presigned URL
+      const urlResponse = await fetch(`/api/projects/${projectId}/thumbnail-clip`, {
         method: 'POST',
-        body: formData
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'get-upload-url' })
       });
 
-      const result = await response.json();
+      if (!urlResponse.ok) {
+        const error = await urlResponse.json();
+        console.error('❌ Failed to get upload URL:', error);
+        throw new Error(error.error || 'Failed to get upload URL');
+      }
 
-      if (!response.ok) {
+      const { presignedUrl, publicUrl } = await urlResponse.json();
+      console.log('✅ Got presigned URL');
+
+      // Step 2: Upload directly to R2
+      toast.loading("☁️ Uploading to storage...", { id: "custom-upload" });
+      
+      const uploadResponse = await fetch(presignedUrl, {
+        method: 'PUT',
+        body: file,
+        headers: {
+          'Content-Type': file.type
+        }
+      });
+
+      if (!uploadResponse.ok) {
+        console.error('❌ R2 upload failed:', uploadResponse.status);
+        throw new Error('Failed to upload to storage');
+      }
+
+      console.log('✅ Upload to R2 successful!');
+
+      // Step 3: Confirm upload and update database
+      toast.loading("💾 Updating database...", { id: "custom-upload" });
+      
+      const confirmResponse = await fetch(`/api/projects/${projectId}/thumbnail-clip`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          action: 'confirm-upload',
+          publicUrl 
+        })
+      });
+
+      const result = await confirmResponse.json();
+
+      if (!confirmResponse.ok) {
         console.error('❌ API error response:', result);
         throw new Error(result.details || result.error || 'Upload failed');
       }
