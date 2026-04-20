@@ -625,13 +625,12 @@ export default function VideoChapterMarker({ videoUrl, currentThumbnailUrl, chap
     const maxSize = 300 * 1024 * 1024; // 300MB
     if (file.size > maxSize) {
       toast.error("File too large", {
-        description: "Maximum file size is 300MB",
-      });
-        description: "Thumbnail clips should be under 100MB. Please trim your video first."
+        description: "Thumbnail clips should be under 300MB. Please trim your video first."
       });
       return;
     }
 
+    //
     setIsExporting(true);
 
     try {
