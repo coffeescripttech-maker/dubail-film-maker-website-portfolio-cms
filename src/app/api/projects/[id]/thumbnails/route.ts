@@ -4,10 +4,10 @@ import { saveThumbnailMetadata, getThumbnailOptions, setActiveThumbnail, deleteT
 // GET /api/projects/[id]/thumbnails - Get all thumbnails for a project
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const projectId = params.id;
+    const { id: projectId } = await params;
     const thumbnails = await getThumbnailOptions(projectId);
     
     return NextResponse.json({ thumbnails }, { status: 200 });
@@ -23,10 +23,10 @@ export async function GET(
 // POST /api/projects/[id]/thumbnails - Save a new thumbnail
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const projectId = params.id;
+    const { id: projectId } = await params;
     const body = await request.json();
     
     const { thumbnail_url, thumbnail_type, timestamp, metadata, setAsActive = true } = body;
@@ -62,9 +62,10 @@ export async function POST(
 // PATCH /api/projects/[id]/thumbnails/[thumbnailId] - Set active thumbnail
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await params; // Await params even if not using id
     const body = await request.json();
     const { thumbnailId } = body;
     
@@ -97,9 +98,10 @@ export async function PATCH(
 // DELETE /api/projects/[id]/thumbnails/[thumbnailId] - Delete a thumbnail
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await params; // Await params even if not using id
     const { searchParams } = new URL(request.url);
     const thumbnailId = searchParams.get('thumbnailId');
     
