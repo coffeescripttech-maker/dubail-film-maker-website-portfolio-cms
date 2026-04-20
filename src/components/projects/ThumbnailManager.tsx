@@ -4,10 +4,7 @@ import FileUpload from "@/components/upload/FileUpload";
 import VideoFrameCapture, { FrameCaptureResult } from "./VideoFrameCapture";
 import { TrashBinIcon } from "@/icons";
 import { toast } from "sonner";
-import {
-  ThumbnailOption,
-  saveThumbnailMetadata,
-} from "@/lib/thumbnail-service";
+import { ThumbnailOption } from "@/lib/thumbnail-service";
 
 interface ThumbnailManagerProps {
   projectId: string;
@@ -36,12 +33,12 @@ export default function ThumbnailManager({
 
   const loadThumbnailOptions = async () => {
     try {
-      const response = await fetch(`/api/thumbnails/options/${projectId}`);
+      const response = await fetch(`/api/projects/${projectId}/thumbnails`);
       if (!response.ok) {
         throw new Error('Failed to fetch thumbnail options');
       }
       const data = await response.json();
-      setThumbnailOptions(data.data || []);
+      setThumbnailOptions(data.thumbnails || []);
     } catch (error) {
       console.error("Error loading thumbnail options:", error);
       setThumbnailOptions([]);
@@ -52,10 +49,13 @@ export default function ThumbnailManager({
     try {
       setLoading(true);
 
-      // Save thumbnail metadata to database
-      await saveThumbnailMetadata(
-        projectId,
-        {
+      // Save thumbnail metadata to database via API route
+      const response = await fetch(`/api/projects/${projectId}/thumbnails`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           thumbnail_url: result.publicUrl,
           thumbnail_type: "custom",
           metadata: {
@@ -63,9 +63,13 @@ export default function ThumbnailManager({
             height: result.height,
             size: result.size,
           },
-        },
-        true // Set as active
-      );
+          setAsActive: true
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save thumbnail');
+      }
 
       // Reload thumbnail options
       await loadThumbnailOptions();
