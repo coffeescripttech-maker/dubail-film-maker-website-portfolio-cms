@@ -93,7 +93,7 @@ export default function FileUpload({
     try {
       // Step 1: Get presigned URL from our API with timeout
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout for API call
 
       const presignedResponse = await fetch('/api/upload/presigned-url', {
         method: 'POST',
@@ -118,8 +118,8 @@ export default function FileUpload({
       // Step 2: Upload directly to R2 using presigned URL
       const xhr = new XMLHttpRequest();
 
-      // Set timeout for upload
-      xhr.timeout = 300000; // 5 minutes
+      // Set timeout for upload (30 minutes for large files)
+      xhr.timeout = 1800000; // 30 minutes
 
       // Track upload progress
       xhr.upload.addEventListener('progress', (e) => {
