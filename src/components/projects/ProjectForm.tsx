@@ -730,7 +730,7 @@ export default function ProjectForm({ project, onSubmit, onCancel, existingProje
               <FileUpload
                 type="video"
                 folder="projects/videos"
-                maxSizeMB={800}
+                maxSizeMB={1500}
                 currentFile={formData.video_url}
                 onUploadComplete={(result) => {
                   handleInputChange('video_url', result.publicUrl);
