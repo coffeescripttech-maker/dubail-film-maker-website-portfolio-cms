@@ -123,9 +123,10 @@ export async function createProject(project: Omit<Project, 'id' | 'created_at' |
     await queryD1(
       `INSERT INTO projects (
         id, title, client, client_short, category, data_cat, languages, classification,
-        vimeo_id, video_url, poster_image, poster_image_srcset, credits, chapters,
+        vimeo_id, video_url, video_url_arabic, video_url_full_arabic, video_thumbnail_url_arabic,
+        poster_image, poster_image_srcset, credits, chapters,
         order_index, is_featured, is_published
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         project.title,
@@ -137,6 +138,9 @@ export async function createProject(project: Omit<Project, 'id' | 'created_at' |
         project.classification,
         project.vimeo_id,
         project.video_url,
+        project.video_url_arabic || null,
+        project.video_url_full_arabic || null,
+        project.video_thumbnail_url_arabic || null,
         project.poster_image,
         project.poster_image_srcset,
         creditsJson,
@@ -210,6 +214,18 @@ export async function updateProject(id: string, updates: Partial<Project>): Prom
     if (updates.video_thumbnail_url !== undefined) {
       fields.push('video_thumbnail_url = ?');
       values.push(updates.video_thumbnail_url);
+    }
+    if (updates.video_url_arabic !== undefined) {
+      fields.push('video_url_arabic = ?');
+      values.push(updates.video_url_arabic);
+    }
+    if (updates.video_url_full_arabic !== undefined) {
+      fields.push('video_url_full_arabic = ?');
+      values.push(updates.video_url_full_arabic);
+    }
+    if (updates.video_thumbnail_url_arabic !== undefined) {
+      fields.push('video_thumbnail_url_arabic = ?');
+      values.push(updates.video_thumbnail_url_arabic);
     }
     if (updates.poster_image !== undefined) {
       fields.push('poster_image = ?');

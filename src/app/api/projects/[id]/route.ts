@@ -55,6 +55,9 @@ export async function PUT(
       vimeo_id,
       video_url,
       video_thumbnail_url,
+      video_url_arabic,
+      video_url_full_arabic,
+      video_thumbnail_url_arabic,
       poster_image,
       poster_image_srcset,
       credits,
@@ -66,6 +69,7 @@ export async function PUT(
 
     console.log('📝 PUT /api/projects/[id] - Updating project:', id);
     console.log('🎬 video_thumbnail_url from body:', video_thumbnail_url);
+    console.log('🇸🇦 Arabic videos:', { video_url_arabic, video_url_full_arabic, video_thumbnail_url_arabic });
 
     // Validation
     if (title && !title.trim()) {
@@ -84,6 +88,9 @@ export async function PUT(
       vimeo_id,
       video_url,
       video_thumbnail_url,
+      video_url_arabic,
+      video_url_full_arabic,
+      video_thumbnail_url_arabic,
       poster_image,
       poster_image_srcset,
       credits,

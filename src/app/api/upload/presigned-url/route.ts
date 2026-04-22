@@ -4,6 +4,9 @@ import { authOptions } from '@/lib/auth';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
+// Increase timeout for large file uploads (30 minutes)
+export const maxDuration = 1800; // 30 minutes in seconds
+
 const s3Client = new S3Client({
   region: 'auto',
   endpoint: process.env.R2_ENDPOINT,
@@ -38,7 +41,7 @@ export async function POST(request: NextRequest) {
       ContentType: fileType,
     });
 
-    const presignedUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+    const presignedUrl = await getSignedUrl(s3Client, command, { expiresIn: 7200 }); // 2 hours for large uploads
 
     // Generate public URL
     const publicUrl = `${process.env.R2_PUBLIC_URL}/${key}`;

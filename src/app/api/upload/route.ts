@@ -12,6 +12,9 @@ import {
   MAX_VIDEO_SIZE_MB
 } from '@/lib/r2-storage';
 
+// Increase timeout for large video uploads (30 minutes)
+export const maxDuration = 1800; // 30 minutes in seconds
+
 export async function POST(request: NextRequest) {
   try {
     // Check authentication

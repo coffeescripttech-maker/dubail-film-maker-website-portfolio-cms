@@ -43,6 +43,10 @@ export async function GET(request: NextRequest) {
         video_url_full: project.video_url,
         // Thumbnail clip URL (if available)
         video_thumbnail_url: project.video_thumbnail_url || null,
+        // Arabic video URLs
+        video_url_arabic: project.video_url_arabic || null,
+        video_url_full_arabic: project.video_url_full_arabic || null,
+        video_thumbnail_url_arabic: project.video_thumbnail_url_arabic || null,
         poster_image: project.poster_image || '',
         poster_image_srcset: project.poster_image_srcset || '',
         link: `works/project-detail#id=${project.id}`,

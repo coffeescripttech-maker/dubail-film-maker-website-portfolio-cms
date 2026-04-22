@@ -5,8 +5,8 @@ import { queryD1 } from '@/lib/d1-client';
 // Use Node.js runtime for database operations
 export const runtime = 'nodejs';
 
-// Increase max duration for large file uploads (300MB)
-export const maxDuration = 120; // 120 seconds (2 minutes)
+// Increase max duration for large file uploads (up to 800MB)
+export const maxDuration = 1800; // 1800 seconds (30 minutes)
 
 export async function POST(
   request: NextRequest,

@@ -41,6 +41,10 @@ export interface Project {
   thumbnail_type?: 'custom' | 'video_frame' | 'default' | null;
   thumbnail_timestamp?: number | null;
   thumbnail_metadata?: string | null; // JSON string
+  // Arabic video fields (optional)
+  video_url_arabic?: string | null;
+  video_url_full_arabic?: string | null;
+  video_thumbnail_url_arabic?: string | null;
 }
 
 export interface Credit {
