@@ -6,7 +6,8 @@ import { queryD1 } from '@/lib/d1-client';
 export const runtime = 'nodejs';
 
 // Increase max duration for large file uploads (up to 800MB)
-export const maxDuration = 1800; // 1800 seconds (30 minutes)
+// Vercel hobby plan limit: 300 seconds (5 minutes)
+export const maxDuration = 300;
 
 export async function POST(
   request: NextRequest,

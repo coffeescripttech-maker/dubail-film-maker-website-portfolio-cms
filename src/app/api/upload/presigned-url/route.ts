@@ -4,8 +4,9 @@ import { authOptions } from '@/lib/auth';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
-// Increase timeout for large file uploads (30 minutes)
-export const maxDuration = 1800; // 30 minutes in seconds
+// Increase timeout for large file uploads
+// Vercel hobby plan limit: 300 seconds (5 minutes)
+export const maxDuration = 300;
 
 const s3Client = new S3Client({
   region: 'auto',
