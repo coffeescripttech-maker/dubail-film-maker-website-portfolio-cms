@@ -20,6 +20,26 @@ Updated the maximum video file size constant:
 export const MAX_VIDEO_SIZE_MB = 800; // Increased from 500MB to 800MB
 ```
 
+### 3. API Route Timeouts - Multiple Files
+Added 30-minute timeout for large file uploads:
+
+**`src/app/api/upload/route.ts`**
+```typescript
+export const maxDuration = 1800; // 30 minutes in seconds
+```
+
+**`src/app/api/projects/[id]/thumbnail-clip/route.ts`**
+```typescript
+export const maxDuration = 1800; // 30 minutes (increased from 2 minutes)
+```
+
+**`src/app/api/upload/presigned-url/route.ts`**
+```typescript
+export const maxDuration = 1800; // 30 minutes in seconds
+// Also increased presigned URL expiration to 2 hours
+const presignedUrl = await getSignedUrl(s3Client, command, { expiresIn: 7200 });
+```
+
 ## What This Affects
 
 ### Upload Endpoints
@@ -115,8 +135,11 @@ await fetch(presignedUrl, {
 
 ## Files Modified
 
-1. `final_cms/next.config.ts` - Body size limit
-2. `final_cms/src/lib/r2-storage.ts` - MAX_VIDEO_SIZE_MB constant
+1. `final_cms/next.config.ts` - Body size limit (800MB)
+2. `final_cms/src/lib/r2-storage.ts` - MAX_VIDEO_SIZE_MB constant (800MB)
+3. `final_cms/src/app/api/upload/route.ts` - Added 30-minute timeout
+4. `final_cms/src/app/api/projects/[id]/thumbnail-clip/route.ts` - Increased timeout to 30 minutes
+5. `final_cms/src/app/api/upload/presigned-url/route.ts` - Added 30-minute timeout + 2-hour presigned URL expiration
 
 ## Rollback Instructions
 

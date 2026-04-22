@@ -117,9 +117,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(newProject, { status: 201 });
   } catch (error) {
     console.error('Error creating project:', error);
+    
+    // Check if error is related to missing columns (migration not run)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const isMigrationError = errorMessage.toLowerCase().includes('no such column') || 
+                            errorMessage.toLowerCase().includes('video_url_arabic') ||
+                            errorMessage.toLowerCase().includes('video_url_full_arabic');
+    
+    if (isMigrationError) {
+      return NextResponse.json({ 
+        error: 'Database migration required',
+        details: 'The Arabic video feature requires a database migration. Please run: wrangler d1 execute portfolio-cms-db --local --file=./database/migrations/006-add-arabic-video-fields.sql',
+        technicalDetails: errorMessage
+      }, { status: 500 });
+    }
+    
     return NextResponse.json({ 
       error: 'Failed to create project',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: errorMessage
     }, { status: 500 });
   }
 }
